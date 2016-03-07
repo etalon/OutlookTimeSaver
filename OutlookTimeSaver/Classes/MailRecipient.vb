@@ -30,27 +30,57 @@ Public Class MailRecipient
         End Get
     End Property
 
+    Public ReadOnly Property DefaultSalutation As String
+        Get
+            Dim salutation As String = "Hallo "
+
+            Select Case m_Gender
+                Case GenderEnum.Male
+                    salutation &= "Herr"
+                Case GenderEnum.Female
+                    salutation &= "Frau"
+            End Select
+
+            salutation &= " " & m_LastName
+            Return salutation
+        End Get
+    End Property
+
     Public Sub New(p_Email As MailAddress)
 
         Dim outlookContact As Outlook.ContactItem = Nothing
 
         m_Email = p_Email
 
-        ' TODO Versuche Empfänger aus Datenbank auszulesen
-
         ' Email in Kontakten suchen
         If OutlookContacts.TryGetContact(m_Email.ToString, outlookContact) Then
             m_FirstName = outlookContact.FirstName
             m_LastName = outlookContact.LastName
-            Return
+        Else
+            ' Email manuell splitten und versuchen Vor- und Nachnamen auszulesen
+            resolveNameByEmail(p_Email.ToString)
         End If
 
-        ' Email manuell splitten und versuchen Vor- und Nachnamen auszulesen
-        resolveNameAndGenderByEmail(p_Email.ToString)
+        resolveGender()
 
     End Sub
 
-    Private Sub resolveNameAndGenderByEmail(p_Email As String)
+    Private Sub resolveGender()
+
+        Using db As DatabaseWrapper = DatabaseWrapper.CreateInstance()
+
+            Select Case db.ReadScalarDefault(Of String)("SELECT gender FROM firstname WHERE LOWER(name) = LOWER(@0)", "m", m_FirstName).ToLower
+                Case "m"
+                    m_Gender = GenderEnum.Male
+                Case "w"
+                    m_Gender = GenderEnum.Female
+            End Select
+
+        End Using
+
+    End Sub
+
+    Private Sub resolveNameByEmail(p_Email As String)
 
         Dim user() As String
 

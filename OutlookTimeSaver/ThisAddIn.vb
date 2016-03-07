@@ -88,7 +88,6 @@ Public Class ThisAddIn
 
                     MailItemHandlerList.Remove(myMailItemHandler)
 
-                    ' Hier merken wir uns die Anrede zu dem aktuellen Benutzer
                 Case Else
                     Return
             End Select

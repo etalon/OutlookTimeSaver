@@ -59,26 +59,7 @@ Public Class MailItemHandler
 
     Private Function getCurrentSalutation() As String
 
-        Dim salutation As String = ""
-
-        Select Case m_MailItem.BodyFormat
-            Case Outlook.OlBodyFormat.olFormatHTML
-
-                Dim m As Match = Regex.Match(m_MailItem.HTMLBody, "<p class=MsoNormal>.*, {0,1}<", RegexOptions.None)
-
-                If m.Captures.Count = 0 Then
-                    Return "" ' Keine gültige Anrede gefunden...
-                End If
-
-                m_MailItem.HTMLBody = Replace(m_MailItem.HTMLBody, "<p class=MsoNormal>", "")
-
-                salutation = Replace(Replace(m.Captures.Item(0).Value, "<p class=MsoNormal>", ""), "<", "")
-
-            Case Else
-                salutation = Split(m_MailItem.Body, vbCrLf, 2)(0)
-        End Select
-
-        salutation = salutation.Trim
+        Dim salutation As String = Split(m_MailItem.Body, vbCrLf, 2)(0).Trim
 
         If Not salutation.EndsWith(",") AndAlso Not salutation.EndsWith(".") AndAlso Not salutation.EndsWith("!") Then
             Return "" ' Keine gültige Anrede gefunden...
@@ -270,7 +251,7 @@ Public Class MailItemHandler
 
                 ' TODO: Hier noch über die Vornamen-Datenbank gehen
                 For Each rec In m_Recipients
-                    salutation &= String.Format("Hallo Herr {0}", rec.LastName) & ", "
+                    salutation &= rec.DefaultSalutation & ", "
                 Next
 
             Case Else
