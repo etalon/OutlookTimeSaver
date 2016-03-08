@@ -176,7 +176,7 @@ Public Class MailItemHandler
 
             Log.Debug("SetRecipients.Add: " & tmpAddr)
 
-            m_Recipients.Add(New MailRecipient(New MailAddress(tmpAddr)))
+            m_Recipients.Add(New MailRecipient(rec))
 
         Next
 
@@ -186,6 +186,9 @@ Public Class MailItemHandler
 
         Dim salutation As String = ""
         Dim newMailBody As String = ""
+        Dim matches As MatchCollection
+
+        Log.Debug("Anrede setzen...")
 
         salutation = getAutomaticSalutation()
 
@@ -194,6 +197,9 @@ Public Class MailItemHandler
         End If
 
         If Not String.IsNullOrEmpty(m_LastSalutationWritten) Then
+
+            Log.Debug("Letzte Anrede überschreiben...")
+
             Select Case m_MailItem.BodyFormat
                 Case Outlook.OlBodyFormat.olFormatHTML
                     newMailBody = m_MailItem.HTMLBody.Replace(m_LastSalutationWritten, salutation)
@@ -206,10 +212,24 @@ Public Class MailItemHandler
 
             End Select
         Else
+
+            Log.Debug("Neue Anrede setzen...")
+
             Select Case m_MailItem.BodyFormat
                 Case Outlook.OlBodyFormat.olFormatHTML
 
-                    newMailBody = m_MailItem.HTMLBody.Replace("<div class=WordSection1><p class=MsoNormal><o:p>&nbsp;</o:p>", "<!-- salutation_start --><div class=WordSection1><p class=MsoNormal><o:p>" & salutation & "</o:p><p class=MsoNormal><o:p></o:p></p><p class=MsoNormal><o:p><!-- cursor --></o:p></p>")
+                    matches = Regex.Matches(m_MailItem.HTMLBody, "<body [^<^>]*><div class=WordSection1><p class=MsoNormal><o:p>&nbsp;<\/o:p>", RegexOptions.None)
+                    If matches.Count <> 1 Then
+                        matches = Regex.Matches(m_MailItem.HTMLBody, "<body [^<^>]*><div class=WordSection1><p class=MsoNormal><span [^<^>]*><o:p>&nbsp;<\/o:p>", RegexOptions.None)
+
+                        If matches.Count <> 1 Then
+                            Log.Debug(m_MailItem.HTMLBody)
+                            Throw New Exception("Stelle zum Einfügen der Anrede wurde nicht gefunden")
+                        End If
+
+                    End If
+
+                    newMailBody = Replace(m_MailItem.HTMLBody, matches(0).ToString, Replace(matches(0).ToString, "&nbsp;", salutation))
 
                 Case Else
                     If Not String.IsNullOrEmpty(m_MailItem.Body) AndAlso m_MailItem.Body.Contains(vbCrLf & vbCrLf) Then
@@ -255,6 +275,8 @@ Public Class MailItemHandler
                 Using db As DatabaseWrapper = DatabaseWrapper.CreateInstance()
                     salutation = db.ReadScalarDefault(Of String)("SELECT text FROM salutation WHERE recipients = @0", "", salutationTableKey)
                 End Using
+
+                Log.Debug("Letzte Anrede aus Datenbank: " & salutation)
 
                 If Not String.IsNullOrEmpty(salutation) Then
                     Return salutation

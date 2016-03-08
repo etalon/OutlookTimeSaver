@@ -7,9 +7,10 @@ Public Class MailRecipient
         Female
     End Enum
 
+    Private m_OutlookRecipient As Outlook.Recipient
     Private m_Email As MailAddress
-    Private m_FirstName As String
-    Private m_LastName As String
+    Private m_FirstName As String = ""
+    Private m_LastName As String = ""
     Private m_Gender As GenderEnum
 
     Public ReadOnly Property FirstName As String
@@ -48,11 +49,17 @@ Public Class MailRecipient
         End Get
     End Property
 
-    Public Sub New(p_Email As MailAddress)
+    Public Sub New(p_OutlookRecipient As Outlook.Recipient)
 
         Dim outlookContact As Outlook.ContactItem = Nothing
 
-        m_Email = p_Email
+        If p_OutlookRecipient.AddressEntry.Type = "EX" Then
+            m_Email = New MailAddress(p_OutlookRecipient.AddressEntry.GetExchangeUser().PrimarySmtpAddress)
+        Else
+            m_Email = New MailAddress(p_OutlookRecipient.Address)
+        End If
+
+        m_OutlookRecipient = p_OutlookRecipient
 
         ' Email in Kontakten suchen
         If OutlookContacts.TryGetContact(m_Email.ToString, outlookContact) Then
@@ -60,22 +67,34 @@ Public Class MailRecipient
             m_LastName = outlookContact.LastName
         Else
             ' Email manuell splitten und versuchen Vor- und Nachnamen auszulesen
-            resolveNameByEmail(p_Email.ToString)
+            resolveNameByEmail(m_Email.ToString)
         End If
 
-        resolveGender()
+        Log.Debug("Vorname: " & m_FirstName & "/ Nachname: " & m_LastName)
+
+        If Not String.IsNullOrEmpty(m_FirstName) Then
+            resolveGender()
+        Else
+            Log.Debug("Vorname konnte nicht ausgewertet werden (" & m_OutlookRecipient.Name & ")")
+        End If
 
     End Sub
 
     Private Sub resolveGender()
 
+        Dim value As String
+
         Using db As DatabaseWrapper = DatabaseWrapper.CreateInstance()
 
-            Select Case db.ReadScalarDefault(Of String)("SELECT gender FROM firstname WHERE LOWER(name) = LOWER(@0)", "m", m_FirstName).ToLower
-                Case "m"
+            value = db.ReadScalarDefault(Of String)("SELECT gender FROM firstname WHERE LOWER(name) = LOWER(@0)", "m", m_FirstName)
+
+            Select Case value
+                Case "m", "M", ""
                     m_Gender = GenderEnum.Male
-                Case "w"
+                Case "w", "W"
                     m_Gender = GenderEnum.Female
+                Case Else
+                    Throw New Exception("Ungültiger Wert: " & value)
             End Select
 
         End Using
@@ -94,9 +113,6 @@ Public Class MailRecipient
 
         m_FirstName = GetUppercasedName(user(0))
         m_LastName = GetUppercasedName(user(1))
-
-        ' TODO: Vorname in Namensdatenbank suchen.
-        ' TODO: Standard-Anrede festlegen
 
     End Sub
 
