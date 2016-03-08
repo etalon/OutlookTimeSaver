@@ -9,8 +9,7 @@ Module GlobalHelper
 
     Public ReadOnly Property ApplicationStartupPath() As String
         Get
-            Return AppDataPath
-            'Return System.IO.Path.GetDirectoryName(Application.ExecutablePath)
+            Return System.IO.Path.GetDirectoryName(Application.ExecutablePath)
         End Get
     End Property
 

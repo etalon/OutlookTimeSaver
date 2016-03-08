@@ -44,7 +44,6 @@ Public Class ThisAddIn
         Catch ex As Exception
             Log.Fatal("Schwerer Fehler bei Programmstart", ex)
             MsgBox(ex.ToString, MsgBoxStyle.Critical)
-            Application.Quit()
         End Try
 
     End Sub

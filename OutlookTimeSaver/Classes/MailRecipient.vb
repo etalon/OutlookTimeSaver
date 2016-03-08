@@ -32,6 +32,7 @@ Public Class MailRecipient
 
     Public ReadOnly Property DefaultSalutation As String
         Get
+
             Dim salutation As String = "Hallo "
 
             Select Case m_Gender
@@ -43,6 +44,7 @@ Public Class MailRecipient
 
             salutation &= " " & m_LastName
             Return salutation
+
         End Get
     End Property
 

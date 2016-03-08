@@ -100,7 +100,7 @@ Public MustInherit Class DatabaseWrapper
         Dim myConfig As _EtiDatabaseWrapperConfig = Nothing
 
         If String.IsNullOrEmpty(IO.Path.GetDirectoryName(p_ConfigFile)) Then
-            p_ConfigFile = Path.Combine(ApplicationStartupPath, p_ConfigFile)
+            p_ConfigFile = Path.Combine(AppDataPath, p_ConfigFile)
         End If
 
         m_ConfigFile = p_ConfigFile

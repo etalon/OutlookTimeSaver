@@ -32,6 +32,10 @@ Public Class MailItemHandler
 
     Private ReadOnly Property salutationTableKey As String
         Get
+            If m_Recipients.Count = 0 Then
+                Throw New Exception("Es konnten keine Empfänger ermittelt werden.")
+            End If
+
             Return Join(m_Recipients.Select(Function(x) x.EMailAsString).ToArray, ",")
         End Get
     End Property
@@ -55,6 +59,8 @@ Public Class MailItemHandler
             db.ExecuteNonQuery("INSERT OR REPLACE INTO salutation (recipients,text) VALUES (@0,@1);", salutationTableKey, salutation)
         End Using
 
+        Log.Debug(String.Format("Anrede zu {0} wurde aktualisiert: {1}", salutationTableKey, salutation))
+
     End Sub
 
     Private Function getCurrentSalutation() As String
@@ -68,6 +74,8 @@ Public Class MailItemHandler
         If Not VALID_SALUTATIONS.Any(Function(x) salutation.StartsWith(x, StringComparison.CurrentCultureIgnoreCase)) Then
             Return "" ' Keine gültige Anrede gefunden...
         End If
+
+        Log.Debug("Ermittelte Anrede: " & salutation)
 
         Return salutation
 
@@ -166,6 +174,8 @@ Public Class MailItemHandler
                 tmpAddr = rec.Address
             End If
 
+            Log.Debug("SetRecipients.Add: " & tmpAddr)
+
             m_Recipients.Add(New MailRecipient(New MailAddress(tmpAddr)))
 
         Next
@@ -238,6 +248,7 @@ Public Class MailItemHandler
 
         Select Case m_Recipients.Count
             Case 0
+                Log.Debug("Automatisch ermittelte Anrede: n.a - keine Empfänger")
                 Return ""
             Case 1 To 2
 
@@ -249,7 +260,6 @@ Public Class MailItemHandler
                     Return salutation
                 End If
 
-                ' TODO: Hier noch über die Vornamen-Datenbank gehen
                 For Each rec In m_Recipients
                     salutation &= rec.DefaultSalutation & ", "
                 Next
@@ -257,6 +267,8 @@ Public Class MailItemHandler
             Case Else
                 salutation = "Sehr geehrte Damen und Herren, "
         End Select
+
+        Log.Debug("Automatisch ermittelte Anrede: " & salutation)
 
         Return salutation
 
