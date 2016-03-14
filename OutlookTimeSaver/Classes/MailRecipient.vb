@@ -59,6 +59,8 @@ Public Class MailRecipient
             m_Email = New MailAddress(p_OutlookRecipient.Address)
         End If
 
+        Log.Debug("MailRecipient.New: " & m_Email.ToString)
+
         m_OutlookRecipient = p_OutlookRecipient
 
         ' Email in Kontakten suchen
@@ -67,7 +69,9 @@ Public Class MailRecipient
             m_LastName = outlookContact.LastName
         Else
             ' Email manuell splitten und versuchen Vor- und Nachnamen auszulesen
-            resolveNameByEmail(m_Email.ToString)
+            If Not resolveNameByEmail() Then
+                resolveByRecipientName()
+            End If
         End If
 
         Log.Debug("Vorname: " & m_FirstName & "/ Nachname: " & m_LastName)
@@ -101,20 +105,33 @@ Public Class MailRecipient
 
     End Sub
 
-    Private Sub resolveNameByEmail(p_Email As String)
+    Private Function resolveNameByEmail() As Boolean
 
-        Dim user() As String
-
-        user = m_Email.User.Split("."c)
+        Dim user() As String = m_Email.User.Split("."c)
 
         If user.Length <> 2 Then
-            Return
+            Return False
         End If
 
         m_FirstName = GetUppercasedName(user(0))
         m_LastName = GetUppercasedName(user(1))
+        Return True
 
-    End Sub
+    End Function
+
+    Private Function resolveByRecipientName() As Boolean
+
+        Dim user() As String = m_OutlookRecipient.Name.Split(" "c)
+
+        If user.Length <> 2 Then
+            Return False
+        End If
+
+        m_FirstName = GetUppercasedName(user(0))
+        m_LastName = GetUppercasedName(user(1))
+        Return True
+
+    End Function
 
     Public Function GetUppercasedName(p_Name As String) As String
 

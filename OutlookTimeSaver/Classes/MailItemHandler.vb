@@ -125,8 +125,6 @@ Public Class MailItemHandler
                     ' Aktuell nichts machen
                 Case "subject"
 
-                    m_MailItem.Save()
-
                     If m_IsNewMail Then
                         setRecipientsAndSaluation()
                     End If
@@ -147,8 +145,6 @@ Public Class MailItemHandler
 
     Private Sub setRecipients()
 
-        Dim tmpAddr As String
-
         Log.Debug("SetRecipients.Count: " & m_MailItem.Recipients.Count)
         m_Recipients.Clear()
 
@@ -167,14 +163,6 @@ Public Class MailItemHandler
             If String.IsNullOrEmpty(rec.Address) Then
                 Continue For
             End If
-
-            If rec.AddressEntry.Type = "EX" Then
-                tmpAddr = rec.AddressEntry.GetExchangeUser().PrimarySmtpAddress
-            Else
-                tmpAddr = rec.Address
-            End If
-
-            Log.Debug("SetRecipients.Add: " & tmpAddr)
 
             m_Recipients.Add(New MailRecipient(rec))
 
