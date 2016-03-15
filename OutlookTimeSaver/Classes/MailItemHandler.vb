@@ -21,6 +21,8 @@ Public Class MailItemHandler
     Private m_LastSalutationWritten As String
     Private m_BodyFormat As Outlook.OlBodyFormat
 
+    Private m_KnownPropertyChanges As New List(Of String)
+
     Public Shared Sub PassOutlookApplication(p_OutlookApplication As Outlook.Application)
         m_OutlookApplication = p_OutlookApplication
     End Sub
@@ -100,12 +102,12 @@ Public Class MailItemHandler
             Return ' Neue Mail
         End If
 
-        m_AfterMailOpenThread = New Thread(AddressOf runAfterMailOpenThread)
+        m_AfterMailOpenThread = New Thread(AddressOf runAfterResponseMailOpenThread)
         m_AfterMailOpenThread.Start()
 
     End Sub
 
-    Private Sub runAfterMailOpenThread()
+    Private Sub runAfterResponseMailOpenThread()
 
         Try
             While m_OutlookApplication.ActiveInspector Is Nothing
@@ -128,12 +130,19 @@ Public Class MailItemHandler
 
             Log.Debug("MailItem_PropertyChange: " & Name)
 
+            If Not m_IsNewMail Then
+                Return
+            End If
+
+            m_KnownPropertyChanges.Add(Name.ToLower)
+
             Select Case Name.ToLower
                 Case "to"
-                    ' Aktuell nichts machen
+                    If m_KnownPropertyChanges.Contains("subject") Then
+                        setRecipientsAndSaluation()
+                    End If
                 Case "subject"
-
-                    If m_IsNewMail Then
+                    If m_KnownPropertyChanges.Contains("to") Then
                         setRecipientsAndSaluation()
                     End If
             End Select
@@ -146,19 +155,20 @@ Public Class MailItemHandler
 
     Private Sub setRecipientsAndSaluation()
 
+        m_KnownPropertyChanges.Clear()
+
         setRecipients()
-        setSalutation()
+        setSalutationByWordEditor()
 
     End Sub
 
     Private Sub setRecipients()
 
-        ' TODO: Hier gehen unbekannte E-Mails verloren.
         If Not m_MailItem.Recipients.ResolveAll Then
             Log.Debug("ResolveAll failed")
         End If
 
-        Log.Debug("SetRecipients.Count: " & m_MailItem.Recipients.Count & " / m_Recipients.Count: " & m_Recipients.Count)
+        Log.Debug("SetRecipients.Count: " & m_MailItem.Recipients.Count & " / m_Recipients.Count: " & m_Recipients.Count & " / TO: " & m_MailItem.To)
         m_Recipients.Clear()
 
         For Each rec As Outlook.Recipient In m_MailItem.Recipients
@@ -181,7 +191,32 @@ Public Class MailItemHandler
 
     End Sub
 
-    Private Sub setSalutation()
+    Private Sub setSalutationByWordEditor()
+
+        Dim salutation As String = getAutomaticSalutation()
+
+        If String.IsNullOrEmpty(salutation) Then
+            Return
+        End If
+
+        If Not String.IsNullOrEmpty(m_LastSalutationWritten) Then
+            With m_WordEditor.Application.Selection
+                .Start = 0
+                .End = m_LastSalutationWritten.Length + 2
+                .Delete()
+            End With
+        End If
+
+        With m_WordEditor.Application.Selection
+            .Start = 0
+            .InsertBefore(salutation & vbCrLf & vbCrLf)
+            .Start = salutation.Length + 2
+            .End = .Start
+        End With
+
+    End Sub
+
+    Private Sub setSalutationByBody()
 
         Dim salutation As String = ""
         Dim newMailBody As String = ""
@@ -317,8 +352,6 @@ Public Class MailItemHandler
     Private Sub setBodyCursorPosition(p_NewBody As String, p_Salutation As String)
 
         With m_WordEditor.Application.Selection
-            ' TODO 
-            '   m_WordEditor.Application.Selection.InsertBefore(p_Salutation)
             Select Case m_BodyFormat
                 Case Outlook.OlBodyFormat.olFormatHTML
                     .Start = p_Salutation.Length + 2
