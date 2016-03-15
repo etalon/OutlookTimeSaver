@@ -19,10 +19,17 @@ Public Class MailItemHandler
     Private m_AfterMailOpenThread As Thread
     Private m_IsNewMail As Boolean
     Private m_LastSalutationWritten As String
+    Private m_BodyFormat As Outlook.OlBodyFormat
 
     Public Shared Sub PassOutlookApplication(p_OutlookApplication As Outlook.Application)
         m_OutlookApplication = p_OutlookApplication
     End Sub
+
+    Private ReadOnly Property isSalutationWritten As Boolean
+        Get
+            Return Not String.IsNullOrEmpty(m_LastSalutationWritten)
+        End Get
+    End Property
 
     Public ReadOnly Property UniqueId As String
         Get
@@ -44,6 +51,7 @@ Public Class MailItemHandler
 
         Log.Debug("New MailItem")
         m_MailItem = p_MailItem
+        m_BodyFormat = m_MailItem.BodyFormat
 
     End Sub
 
@@ -145,10 +153,13 @@ Public Class MailItemHandler
 
     Private Sub setRecipients()
 
-        Log.Debug("SetRecipients.Count: " & m_MailItem.Recipients.Count)
-        m_Recipients.Clear()
+        ' TODO: Hier gehen unbekannte E-Mails verloren.
+        If Not m_MailItem.Recipients.ResolveAll Then
+            Log.Debug("ResolveAll failed")
+        End If
 
-        m_MailItem.Recipients.ResolveAll()
+        Log.Debug("SetRecipients.Count: " & m_MailItem.Recipients.Count & " / m_Recipients.Count: " & m_Recipients.Count)
+        m_Recipients.Clear()
 
         For Each rec As Outlook.Recipient In m_MailItem.Recipients
 
@@ -188,7 +199,7 @@ Public Class MailItemHandler
 
             Log.Debug("Letzte Anrede überschreiben...")
 
-            Select Case m_MailItem.BodyFormat
+            Select Case m_BodyFormat
                 Case Outlook.OlBodyFormat.olFormatHTML
                     newMailBody = m_MailItem.HTMLBody.Replace(m_LastSalutationWritten, salutation)
                 Case Else
@@ -203,21 +214,23 @@ Public Class MailItemHandler
 
             Log.Debug("Neue Anrede setzen...")
 
-            Select Case m_MailItem.BodyFormat
+            Select Case m_BodyFormat
                 Case Outlook.OlBodyFormat.olFormatHTML
 
-                    matches = Regex.Matches(m_MailItem.HTMLBody, "<body [^<^>]*><div class=WordSection1><p class=MsoNormal><o:p>&nbsp;<\/o:p>", RegexOptions.None)
+                    newMailBody = m_MailItem.HTMLBody
+
+                    matches = Regex.Matches(newMailBody, "<body [^<^>]*><div class=WordSection1><p class=MsoNormal><o:p>&nbsp;<\/o:p>", RegexOptions.None)
                     If matches.Count <> 1 Then
-                        matches = Regex.Matches(m_MailItem.HTMLBody, "<body [^<^>]*><div class=WordSection1><p class=MsoNormal><span [^<^>]*><o:p>&nbsp;<\/o:p>", RegexOptions.None)
+                        matches = Regex.Matches(newMailBody, "<body [^<^>]*><div class=WordSection1><p class=MsoNormal><span [^<^>]*><o:p>&nbsp;<\/o:p>", RegexOptions.None)
 
                         If matches.Count <> 1 Then
-                            Log.Debug(m_MailItem.HTMLBody)
+                            Log.Debug(newMailBody)
                             Throw New Exception("Stelle zum Einfügen der Anrede wurde nicht gefunden")
                         End If
 
                     End If
 
-                    newMailBody = Replace(m_MailItem.HTMLBody, matches(0).ToString, Replace(matches(0).ToString, "&nbsp;", salutation))
+                    newMailBody = Replace(newMailBody, matches(0).ToString, Replace(matches(0).ToString, "&nbsp;", salutation & "<br><br>.<br>"))
 
                 Case Else
                     If Not String.IsNullOrEmpty(m_MailItem.Body) AndAlso m_MailItem.Body.Contains(vbCrLf & vbCrLf) Then
@@ -304,7 +317,14 @@ Public Class MailItemHandler
     Private Sub setBodyCursorPosition(p_NewBody As String, p_Salutation As String)
 
         With m_WordEditor.Application.Selection
-            .Start = p_Salutation.Length + 2
+            ' TODO 
+            '   m_WordEditor.Application.Selection.InsertBefore(p_Salutation)
+            Select Case m_BodyFormat
+                Case Outlook.OlBodyFormat.olFormatHTML
+                    .Start = p_Salutation.Length + 2
+                Case Else
+                    .Start = p_Salutation.Length + 2
+            End Select
         End With
 
     End Sub

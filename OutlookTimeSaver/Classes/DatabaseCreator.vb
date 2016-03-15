@@ -38,6 +38,9 @@
                     Case 1
                         .ExecuteNonQuery("CREATE TABLE salutation (recipients nvarchar(200) NOT NULL, text nvarchar(100) NOT NULL, PRIMARY KEY(recipients));")
 
+                    Case 2
+                        .ExecuteNonQuery("CREATE TABLE exchangeaddress (address nvarchar(300) NOT NULL, email nvarchar(100) NOT NULL, PRIMARY KEY(address));")
+
                     Case Else
                         ' Kein Update notwendig
                         hasCurrentDbVersion = True

@@ -53,25 +53,15 @@ Public Class MailRecipient
 
         Dim outlookContact As Outlook.ContactItem = Nothing
 
-        If p_OutlookRecipient.AddressEntry.Type = "EX" Then
-            m_Email = New MailAddress(p_OutlookRecipient.AddressEntry.GetExchangeUser().PrimarySmtpAddress)
-        Else
-            m_Email = New MailAddress(p_OutlookRecipient.Address)
-        End If
-
-        Log.Debug("MailRecipient.New: " & m_Email.ToString)
-
         m_OutlookRecipient = p_OutlookRecipient
 
-        ' Email in Kontakten suchen
-        If OutlookContacts.TryGetContact(m_Email.ToString, outlookContact) Then
-            m_FirstName = outlookContact.FirstName
-            m_LastName = outlookContact.LastName
-        Else
-            ' Email manuell splitten und versuchen Vor- und Nachnamen auszulesen
-            If Not resolveNameByEmail() Then
-                resolveByRecipientName()
-            End If
+        readMailAddress()
+
+        Log.Debug("MailRecipient.New: " & m_Email.ToString & "/" & m_OutlookRecipient.Address)
+
+        ' Email manuell splitten und versuchen Vor- und Nachnamen auszulesen
+        If Not resolveNameByEmail() Then
+            resolveByRecipientName()
         End If
 
         Log.Debug("Vorname: " & m_FirstName & "/ Nachname: " & m_LastName)
@@ -80,6 +70,30 @@ Public Class MailRecipient
             resolveGender()
         Else
             Log.Debug("Vorname konnte nicht ausgewertet werden (" & m_OutlookRecipient.Name & ")")
+        End If
+
+    End Sub
+
+    Private Sub readMailAddress()
+
+        Dim mail As String = ""
+
+        If m_OutlookRecipient.AddressEntry.Type = "EX" Then
+
+            Using db As DatabaseWrapper = DatabaseWrapper.CreateInstance()
+
+                mail = db.ReadScalarDefault(Of String)("SELECT email FROM exchangeaddress WHERE address = @0", "", m_OutlookRecipient.Address)
+
+                If String.IsNullOrEmpty(mail) Then
+                    mail = m_OutlookRecipient.AddressEntry.GetExchangeUser().PrimarySmtpAddress
+                    db.ExecuteNonQuery("INSERT INTO exchangeaddress (address, email) VALUES (@0, @1)", m_OutlookRecipient.Address, mail)
+                End If
+
+                m_Email = New MailAddress(mail)
+
+            End Using
+        Else
+            m_Email = New MailAddress(m_OutlookRecipient.Address)
         End If
 
     End Sub
