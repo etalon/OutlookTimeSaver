@@ -8,12 +8,6 @@
 
     End Sub
 
-    Public Shared Function GetByMailItemID(p_MailItem As Outlook.MailItem) As MailItemHandler
-
-        Return m_MailItemHandlers.First(Function(x) x.UniqueId = p_MailItem.ConversationIndex)
-
-    End Function
-
     Public Shared Sub Remove(p_MailItemHandler As MailItemHandler)
 
         m_MailItemHandlers.Remove(p_MailItemHandler)

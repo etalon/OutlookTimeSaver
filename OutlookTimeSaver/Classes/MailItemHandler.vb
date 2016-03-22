@@ -33,12 +33,6 @@ Public Class MailItemHandler
         End Get
     End Property
 
-    Public ReadOnly Property UniqueId As String
-        Get
-            Return m_MailItem.ConversationIndex
-        End Get
-    End Property
-
     Private ReadOnly Property salutationTableKey As String
         Get
             If m_Recipients.Count = 0 Then
@@ -75,8 +69,16 @@ Public Class MailItemHandler
 
     Private Function getCurrentSalutation() As String
 
+        Dim salutation As String = ""
+
         ' TODO: Anrede wird momentan immer aktualisiert
-        Dim salutation As String = Split(m_MailItem.Body, vbCrLf, 2)(0).Trim
+        With m_WordEditor.Application.Selection
+            .Start = 0
+            .End = .EndKey(WordEnums.WDUnits.wdLine, WordEnums.WDMovementType.wdExtend)
+            salutation = .Text
+        End With
+
+        Log.Debug("Gelesene erste Zeile: " & salutation)
 
         If Not salutation.EndsWith(",") AndAlso Not salutation.EndsWith(".") AndAlso Not salutation.EndsWith("!") Then
             Return "" ' Keine gültige Anrede gefunden...
@@ -86,7 +88,7 @@ Public Class MailItemHandler
             Return "" ' Keine gültige Anrede gefunden...
         End If
 
-        Log.Debug("Ermittelte Anrede: " & salutation)
+        Log.Debug("Finale Anrede für Datenbank: " & salutation)
 
         Return salutation
 
@@ -105,6 +107,15 @@ Public Class MailItemHandler
 
         m_AfterMailOpenThread = New Thread(AddressOf runAfterResponseMailOpenThread)
         m_AfterMailOpenThread.Start()
+
+    End Sub
+
+    Private Sub m_MailItem_Send() Handles m_MailItem.Send
+
+        Log.Debug("Nachricht wird gesendet...")
+
+        SaveSalutationToReceipients()
+        MailItemHandlerList.Remove(Me)
 
     End Sub
 

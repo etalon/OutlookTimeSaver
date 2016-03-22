@@ -72,30 +72,4 @@ Public Class ThisAddIn
 
     End Sub
 
-    Private Sub inspector_ItemSend(p_Object As Object, ByRef p_Cancel As Boolean) Handles Application.ItemSend
-
-        Dim myMailItemHandler As MailItemHandler
-
-        Try
-
-            Select Case True
-                Case TypeOf p_Object Is Outlook.MailItem
-
-                    myMailItemHandler = MailItemHandlerList.GetByMailItemID(DirectCast(p_Object, Outlook.MailItem))
-
-                    myMailItemHandler.SaveSalutationToReceipients()
-
-                    MailItemHandlerList.Remove(myMailItemHandler)
-
-                Case Else
-                    Return
-            End Select
-
-        Catch ex As Exception
-            Log.Fatal("ItemSendEvent", ex)
-            MsgBox(ex.Message, MsgBoxStyle.Critical, "ItemSendEvent")
-        End Try
-
-    End Sub
-
 End Class
