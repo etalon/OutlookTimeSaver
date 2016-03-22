@@ -75,9 +75,16 @@ Public Class MailItemHandler
         With m_WordEditor.Application.Selection
             .Start = 0
             .End = .EndKey(WordEnums.WDUnits.wdLine, WordEnums.WDMovementType.wdExtend)
+            .Start = 0
             salutation = .Text
         End With
 
+        If String.IsNullOrEmpty(salutation) Then
+            Log.Debug("Es konnte keine Anrede gelesen werden.")
+            Return ""
+        End If
+
+        salutation = salutation.Trim
         Log.Debug("Gelesene erste Zeile: " & salutation)
 
         If Not salutation.EndsWith(",") AndAlso Not salutation.EndsWith(".") AndAlso Not salutation.EndsWith("!") Then
