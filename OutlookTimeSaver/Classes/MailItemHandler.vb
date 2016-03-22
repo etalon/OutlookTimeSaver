@@ -75,6 +75,7 @@ Public Class MailItemHandler
 
     Private Function getCurrentSalutation() As String
 
+        ' TODO: Anrede wird momentan immer aktualisiert
         Dim salutation As String = Split(m_MailItem.Body, vbCrLf, 2)(0).Trim
 
         If Not salutation.EndsWith(",") AndAlso Not salutation.EndsWith(".") AndAlso Not salutation.EndsWith("!") Then
@@ -156,6 +157,10 @@ Public Class MailItemHandler
     Private Sub setRecipientsAndSaluation()
 
         m_KnownPropertyChanges.Clear()
+
+        If m_MailItem.Subject = "Etiscan Software-Update" Then
+            Return
+        End If
 
         setRecipients()
         setSalutationByWordEditor()
