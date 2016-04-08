@@ -157,7 +157,7 @@ Public Class MailItemHandler
 
             Select Case Name.ToLower
                 Case "to"
-                    If m_KnownPropertyChanges.Contains("subject") Then
+                    If m_KnownPropertyChanges.Contains("subject") Or m_MailItem.Subject.StartsWith("WG:") Then
                         setRecipientsAndSaluation()
                     End If
                 Case "subject"
@@ -176,7 +176,8 @@ Public Class MailItemHandler
 
         m_KnownPropertyChanges.Clear()
 
-        If m_MailItem.Subject = "Etiscan Software-Update" Then
+        If Config.My.NoSalutationAtTopicStartsWith.Exists(Function(x) m_MailItem.Subject.StartsWith(x, StringComparison.CurrentCultureIgnoreCase)) Then
+            Log.Debug("Anrede wird nicht gesetzt, da Überschrift in der Ausschlussliste enthalten ist.")
             Return
         End If
 

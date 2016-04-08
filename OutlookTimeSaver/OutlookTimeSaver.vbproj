@@ -37,7 +37,7 @@
     <PublishUrl>C:\temp\ots\</PublishUrl>
     <InstallUrl />
     <TargetCulture>en</TargetCulture>
-    <ApplicationVersion>1.0.0.65</ApplicationVersion>
+    <ApplicationVersion>1.0.0.68</ApplicationVersion>
     <AutoIncrementApplicationRevision>true</AutoIncrementApplicationRevision>
     <UpdateEnabled>true</UpdateEnabled>
     <UpdateInterval>7</UpdateInterval>
