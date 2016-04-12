@@ -13,6 +13,12 @@ Public Class MailRecipient
     Private m_LastName As String = ""
     Private m_Gender As GenderEnum
 
+    ''' <summary>
+    ''' Bestimmt ob der Eintrag noch gültig ist
+    ''' </summary>
+    ''' <returns></returns>
+    Public Property Valid As Boolean = True
+
     Public ReadOnly Property FirstName As String
         Get
             Return m_FirstName

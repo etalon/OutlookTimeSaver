@@ -2,9 +2,9 @@
 
     Private Shared m_MailItemHandlers As New List(Of MailItemHandler)
 
-    Public Shared Sub Add(p_MailItem As Outlook.MailItem)
+    Public Shared Sub Add(p_MailItem As Outlook.MailItem, p_IsInlineResponse As Boolean)
 
-        m_MailItemHandlers.Add(New MailItemHandler(p_MailItem))
+        m_MailItemHandlers.Add(New MailItemHandler(p_MailItem, p_IsInlineResponse))
 
     End Sub
 

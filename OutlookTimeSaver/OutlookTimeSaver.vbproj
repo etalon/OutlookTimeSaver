@@ -268,7 +268,6 @@
     <Compile Include="Classes\General\UnhandledExceptionHandler.vb" />
     <Compile Include="Classes\MailItemHandler.vb" />
     <Compile Include="Classes\MailRecipient.vb" />
-    <Compile Include="Classes\OutlookContacts.vb" />
     <Compile Include="Extensions\DatabaseExtensions.vb" />
     <Compile Include="Extensions\DateExtensions.vb" />
     <Compile Include="Extensions\ListExtension.vb" />

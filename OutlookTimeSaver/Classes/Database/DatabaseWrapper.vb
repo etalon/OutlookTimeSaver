@@ -302,9 +302,6 @@ Public MustInherit Class DatabaseWrapper
 
         addToLog(String.Format("Transaction #{0}: Start ({1})", m_TransactionCount + 1, iso.ToString))
 
-        ' TODO: Wieso wird bei SQLite kein Isolation Level übergeben?
-        ' TODO: Wenn die Nested Transaction ein anderes Isolation Level will, muss ein Fehler ausgelöst werden.
-
         If m_TransactionCount = 0 Then
             Select Case m_DbType
                 Case eDbType.Sqlite

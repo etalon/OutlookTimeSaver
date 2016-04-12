@@ -20,6 +20,7 @@ Public Class MailItemHandler
     Private m_IsNewMail As Boolean
     Private m_LastSalutationWritten As String
     Private m_BodyFormat As Outlook.OlBodyFormat
+    Private m_IsInlineRespone As Boolean
 
     Private m_KnownPropertyChanges As New List(Of String)
 
@@ -43,11 +44,17 @@ Public Class MailItemHandler
         End Get
     End Property
 
-    Public Sub New(p_MailItem As Outlook.MailItem)
+    Public Sub New(p_MailItem As Outlook.MailItem, p_IsInlineResponse As Boolean)
 
         Log.Debug("New MailItem")
+
         m_MailItem = p_MailItem
         m_BodyFormat = m_MailItem.BodyFormat
+        m_IsInlineRespone = p_IsInlineResponse
+
+        If m_IsInlineRespone Then
+            m_MailItem_Open()
+        End If
 
     End Sub
 
@@ -129,11 +136,13 @@ Public Class MailItemHandler
     Private Sub runAfterResponseMailOpenThread()
 
         Try
-            While m_OutlookApplication.ActiveInspector Is Nothing
-                Thread.Sleep(50)
-            End While
+            If Not m_IsInlineRespone Then
+                While m_OutlookApplication.ActiveInspector Is Nothing
+                    Thread.Sleep(50)
+                End While
 
-            Log.Debug("ActiveInspector ist nicht mehr nothing")
+                Log.Debug("ActiveInspector ist nicht mehr nothing")
+            End If
 
             setRecipientsAndSaluation()
 
@@ -148,22 +157,27 @@ Public Class MailItemHandler
         Try
 
             Log.Debug("MailItem_PropertyChange: " & Name)
-
-            If Not m_IsNewMail Then
-                Return
-            End If
-
             m_KnownPropertyChanges.Add(Name.ToLower)
 
             Select Case Name.ToLower
                 Case "to"
-                    If m_KnownPropertyChanges.Contains("subject") Or m_MailItem.Subject.StartsWith("WG:") Then
+                    If m_IsNewMail Then
+                        If m_KnownPropertyChanges.Contains("subject") Or m_MailItem.Subject.StartsWith("WG:") Then
+                            setRecipientsAndSaluation()
+                        End If
+                    Else
                         setRecipientsAndSaluation()
                     End If
+
                 Case "subject"
-                    If m_KnownPropertyChanges.Contains("to") Then
+                    If m_IsNewMail Then
+                        If m_KnownPropertyChanges.Contains("to") Then
+                            setRecipientsAndSaluation()
+                        End If
+                    Else
                         setRecipientsAndSaluation()
                     End If
+
             End Select
 
         Catch ex As Exception
@@ -174,26 +188,32 @@ Public Class MailItemHandler
 
     Private Sub setRecipientsAndSaluation()
 
-        m_KnownPropertyChanges.Clear()
+        Dim haveRecipientsChanged As Boolean
 
         If Config.My.NoSalutationAtTopicStartsWith.Exists(Function(x) m_MailItem.Subject.StartsWith(x, StringComparison.CurrentCultureIgnoreCase)) Then
             Log.Debug("Anrede wird nicht gesetzt, da Überschrift in der Ausschlussliste enthalten ist.")
             Return
         End If
 
-        setRecipients()
-        setSalutationByWordEditor()
+        setRecipients(haveRecipientsChanged)
+        If haveRecipientsChanged Then
+            setSalutationByWordEditor()
+        End If
 
     End Sub
 
-    Private Sub setRecipients()
+    Private Sub setRecipients(ByRef p_HaveRecipientsChanged As Boolean)
+
+        Dim newRecipient As MailRecipient
+        Dim initialRecipientCount As Integer
 
         If Not m_MailItem.Recipients.ResolveAll Then
             Log.Debug("ResolveAll failed")
         End If
 
         Log.Debug("SetRecipients.Count: " & m_MailItem.Recipients.Count & " / m_Recipients.Count: " & m_Recipients.Count & " / TO: " & m_MailItem.To)
-        m_Recipients.Clear()
+        m_Recipients.ForEach(Function(x) x.Valid = False)
+        initialRecipientCount = m_Recipients.Count
 
         For Each rec As Outlook.Recipient In m_MailItem.Recipients
 
@@ -209,9 +229,15 @@ Public Class MailItemHandler
                 Continue For
             End If
 
-            m_Recipients.Add(New MailRecipient(rec))
+            newRecipient = New MailRecipient(rec)
+
+            m_Recipients.RemoveAll(Function(x) x.EMailAsString = newRecipient.EMailAsString)
+            m_Recipients.Add(newRecipient)
 
         Next
+
+        p_HaveRecipientsChanged = initialRecipientCount <> m_Recipients.Count OrElse m_Recipients.Any(Function(x) Not x.Valid)
+        m_Recipients.RemoveAll(Function(x) Not x.Valid)
 
     End Sub
 

@@ -5,7 +5,15 @@ Imports log4net.Repository.Hierarchy.logger
 Public Class ThisAddIn
 
     Private WithEvents m_Inspectors As Outlook.Inspectors
+    Private WithEvents m_Explorer As Outlook.Explorer
+
     Private m_MovedItemsUnreader As DeletedItemsHandler
+
+    ''' <summary>
+    ''' Wenn wir ein MailItem über den Explorer abgreifen wird seltsamerweise auch 
+    ''' ein Inspector-Event mit einem ungültigen MailItem ausgelöst.
+    ''' </summary>
+    Private m_AllowNewMailItemsByInspector As Boolean = True
 
     Private Sub ThisAddIn_Startup() Handles Me.Startup
 
@@ -35,11 +43,11 @@ Public Class ThisAddIn
             Log.Debug("Started")
 
             m_Inspectors = Application.Inspectors
+            m_Explorer = Application.ActiveExplorer
 
             MailItemHandler.PassOutlookApplication(Application)
 
             m_MovedItemsUnreader = New DeletedItemsHandler(Application)
-            OutlookContacts.ReadContacts(Application)
 
         Catch ex As Exception
             Log.Fatal("Schwerer Fehler bei Programmstart", ex)
@@ -52,15 +60,31 @@ Public Class ThisAddIn
 
     End Sub
 
+    Private Sub m_Explorer_InlineResponse() Handles m_Explorer.InlineResponse
+
+        Try
+            m_AllowNewMailItemsByInspector = False
+            MailItemHandlerList.Add(TryCast(m_Explorer.ActiveInlineResponse, Outlook.MailItem), True)
+        Finally
+            m_AllowNewMailItemsByInspector = True
+        End Try
+
+    End Sub
+
     Private Sub inspectors_NewInspector(ByVal p_Inspector As Microsoft.Office.Interop.Outlook.Inspector) Handles m_Inspectors.NewInspector
 
         Log.Debug("NewInspector: " & p_Inspector.Caption)
+
+        If Not m_AllowNewMailItemsByInspector Then
+            Log.Debug("Keine neuen MailItems über den Inspector zur Zeit erlaubt.")
+            Return
+        End If
 
         Try
 
             Select Case True
                 Case TypeOf p_Inspector.CurrentItem Is Outlook.MailItem
-                    MailItemHandlerList.Add(TryCast(p_Inspector.CurrentItem, Outlook.MailItem))
+                    MailItemHandlerList.Add(TryCast(p_Inspector.CurrentItem, Outlook.MailItem), False)
                 Case Else
                     Log.Debug("Inspector (" & p_Inspector.Caption & ") nicht aufgenommen")
             End Select
