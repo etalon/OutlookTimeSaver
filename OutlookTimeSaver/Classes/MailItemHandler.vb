@@ -24,6 +24,8 @@ Public Class MailItemHandler
 
     Private m_KnownPropertyChanges As New List(Of String)
 
+    Private m_SalutationFromDatabase As String = ""
+
     Public Shared Sub PassOutlookApplication(p_OutlookApplication As Outlook.Application)
         m_OutlookApplication = p_OutlookApplication
     End Sub
@@ -66,11 +68,31 @@ Public Class MailItemHandler
             Return
         End If
 
-        Using db As DatabaseWrapper = DatabaseWrapper.CreateInstance()
-            db.ExecuteNonQuery("INSERT OR REPLACE INTO salutation (recipients,text) VALUES (@0,@1);", salutationTableKey, salutation)
-        End Using
+        If Not salutation.SameText(m_SalutationFromDatabase) Then
 
-        Log.Debug(String.Format("Anrede zu {0} wurde aktualisiert: {1}", salutationTableKey, salutation))
+            Using db As DatabaseWrapper = DatabaseWrapper.CreateInstance()
+                db.ExecuteNonQuery("INSERT OR REPLACE INTO recipient (email,salutation,mailcount) VALUES (@0,@1,@2);", salutationTableKey, salutation, 0)
+            End Using
+
+            Log.Debug(String.Format("Anrede zu {0} wurde aktualisiert: {1}", salutationTableKey, salutation))
+
+        End If
+
+        ' TODO: An dieser Stelle müssten wir eigentlich überprüfen ob der Vorname oder Nachname so übernommen wurde und es dann aktualisieren.
+        ' Nur so könnte man aus der Datenbank heraus lernen, aber vielleicht ist es auch unnötig.
+        If m_Recipients.Count = 1 Then
+            With m_Recipients.First
+                If Not .ExistsInDatabase Then
+                    Using db As DatabaseWrapper = DatabaseWrapper.CreateInstance()
+                        db.ExecuteNonQuery("UPDATE recipient SET firstname = @0, lastname = @1, gender = @2, displayname = @3 WHERE email = @4;", .FirstName, .LastName, .Gender, .DisplayName, .EMailAsString)
+                    End Using
+                End If
+            End With
+        End If
+
+        Using db As DatabaseWrapper = DatabaseWrapper.CreateInstance()
+            db.ExecuteNonQuery("UPDATE recipient SET mailcount = mailcount + 1 WHERE email = @0;", salutationTableKey)
+        End Using
 
     End Sub
 
@@ -78,7 +100,6 @@ Public Class MailItemHandler
 
         Dim salutation As String = ""
 
-        ' TODO: Anrede wird momentan immer aktualisiert
         With m_WordEditor.Application.Selection
             .Start = 0
             .End = .EndKey(WordEnums.WDUnits.wdLine, WordEnums.WDMovementType.wdExtend)
@@ -271,6 +292,7 @@ Public Class MailItemHandler
     Private Function getAutomaticSalutation() As String
 
         Dim salutation As String = ""
+        Dim isFromDatabase As Boolean
 
         Log.Debug("Anzahl Empfänger: " & m_Recipients.Count)
 
@@ -278,15 +300,21 @@ Public Class MailItemHandler
             Case 0
                 Log.Debug("Automatisch ermittelte Anrede: n.a - keine Empfänger")
                 Return ""
-            Case 1 To 2
+            Case 1
+
+                salutation = m_Recipients(0).GetSalutation(isFromDatabase)
+                If isFromDatabase Then m_SalutationFromDatabase = salutation
+
+            Case 2
 
                 Using db As DatabaseWrapper = DatabaseWrapper.CreateInstance()
-                    salutation = db.ReadScalarDefault(Of String)("SELECT text FROM salutation WHERE recipients = @0", "", salutationTableKey)
+                    salutation = db.ReadScalarDefault(Of String)("SELECT salutation FROM recipient WHERE email = @0", "", salutationTableKey)
                 End Using
 
                 Log.Debug("Letzte Anrede aus Datenbank: " & salutation)
 
                 If Not String.IsNullOrEmpty(salutation) Then
+                    m_salutationFromDatabase = salutation
                     Return salutation
                 End If
 

@@ -3,6 +3,13 @@ Imports System.IO
 
 Module GlobalHelper
 
+    Public Enum BoolSetEnum
+        [True]
+        [False]
+        NotSet
+    End Enum
+
+
     Public VALID_SALUTATIONS As String() = {"hi", "hallo", "guten morgen", "guten tag", "guten abend", "sehr geehrter", "sehr geehrte"}
 
     Public Log As log4net.ILog = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType)
