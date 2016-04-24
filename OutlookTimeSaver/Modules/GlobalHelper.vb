@@ -4,11 +4,10 @@ Imports System.IO
 Module GlobalHelper
 
     Public Enum BoolSetEnum
+        NotSet
         [True]
         [False]
-        NotSet
     End Enum
-
 
     Public VALID_SALUTATIONS As String() = {"hi", "hallo", "guten morgen", "guten tag", "guten abend", "sehr geehrter", "sehr geehrte"}
 

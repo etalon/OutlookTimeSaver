@@ -30,6 +30,8 @@ Public Class MailItemHandler
         m_OutlookApplication = p_OutlookApplication
     End Sub
 
+    Public Property ChangesDisabled As Boolean
+
     Private ReadOnly Property isSalutationWritten As Boolean
         Get
             Return Not String.IsNullOrEmpty(m_LastSalutationWritten)
@@ -148,6 +150,7 @@ Public Class MailItemHandler
     Private Sub m_MailItem_Send() Handles m_MailItem.Send
 
         Log.Debug("Nachricht wird gesendet...")
+        ChangesDisabled = True
 
         SaveSalutationToReceipients()
         MailItemHandlerList.Remove(Me)
@@ -179,6 +182,10 @@ Public Class MailItemHandler
 
             Log.Debug("MailItem_PropertyChange: " & Name)
             m_KnownPropertyChanges.Add(Name.ToLower)
+
+            If ChangesDisabled Then
+                Return
+            End If
 
             Select Case Name.ToLower
                 Case "to"
@@ -228,12 +235,12 @@ Public Class MailItemHandler
         Dim newRecipient As MailRecipient
         Dim initialRecipientCount As Integer
 
-        If Not m_MailItem.Recipients.ResolveAll Then
-            Log.Debug("ResolveAll failed")
-        End If
-
         Log.Debug("SetRecipients.Count: " & m_MailItem.Recipients.Count & " / m_Recipients.Count: " & m_Recipients.Count & " / TO: " & m_MailItem.To)
-        m_Recipients.ForEach(Function(x) x.Valid = False)
+
+        For Each rec In m_Recipients
+            rec.Valid = False
+        Next
+
         initialRecipientCount = m_Recipients.Count
 
         For Each rec As Outlook.Recipient In m_MailItem.Recipients
@@ -315,18 +322,19 @@ Public Class MailItemHandler
 
                 If Not String.IsNullOrEmpty(salutation) Then
                     m_salutationFromDatabase = salutation
-                    Return salutation
+                Else
+                    salutation = Join(m_Recipients.Select(Function(x) x.DefaultSalutation).ToArray, ", ")
                 End If
 
-                For Each rec In m_Recipients
-                    salutation &= rec.DefaultSalutation & ", "
-                Next
-
             Case Else
-                salutation = "Sehr geehrte Damen und Herren, "
+                salutation = "Sehr geehrte Damen und Herren"
         End Select
 
         Log.Debug("Automatisch ermittelte Anrede: " & salutation)
+
+        If Not salutation.EndsWith(", ") Then
+            salutation &= ", "
+        End If
 
         Return salutation
 

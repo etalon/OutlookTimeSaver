@@ -14,4 +14,10 @@
 
     End Sub
 
+    'Public Shared Function GetItem(p_MailItem As Outlook.MailItem) As MailItemHandler
+
+    '    Return m_MailItemHandlers.First(Function(x) x.Matchs(p_MailItem))
+
+    'End Function
+
 End Class

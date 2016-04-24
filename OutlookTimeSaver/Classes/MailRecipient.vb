@@ -13,12 +13,11 @@ Public Class MailRecipient
 
 #Region "Member"
 
-    Private m_OutlookRecipient As Outlook.Recipient
     Private m_Email As MailAddress
     Private m_FirstName As String = ""
     Private m_LastName As String = ""
     Private m_Gender As GenderEnum
-    Private m_ExistsInDatabase As BoolSetEnum
+    Private m_ExistsInDatabase As BoolSetEnum = BoolSetEnum.NotSet
 
 #End Region
 
@@ -28,7 +27,7 @@ Public Class MailRecipient
     ''' Bestimmt ob der Eintrag noch gültig ist
     ''' </summary>
     ''' <returns></returns>
-    Public Property Valid As Boolean = True
+    Public Property Valid As Boolean
 
     Public ReadOnly Property DisplayName As String
         Get
@@ -132,53 +131,53 @@ Public Class MailRecipient
 
         Dim outlookContact As Outlook.ContactItem = Nothing
 
-        m_OutlookRecipient = p_OutlookRecipient
+        readMailAddress(p_OutlookRecipient)
 
-        readMailAddress()
-
-        Log.Debug("MailRecipient.New: " & m_Email.ToString & "/" & m_OutlookRecipient.Address)
+        Log.Debug("MailRecipient.New: " & m_Email.ToString & "/" & p_OutlookRecipient.Address)
 
         If ExistsInDatabase() Then
             Return ' Wenn wir schon eine Anrede haben, müssen wir nicht mehr Vornamen, Namen und Geschlecht auslesen
         End If
 
-        resolveName()
+        resolveName(p_OutlookRecipient)
 
         If Not String.IsNullOrEmpty(m_FirstName) Then
             resolveGender()
         Else
-            Log.Debug("Vorname konnte nicht ausgewertet werden (" & m_OutlookRecipient.Name & ")")
+            Log.Debug("Vorname konnte nicht ausgewertet werden (" & p_OutlookRecipient.Name & ")")
         End If
+
+        Valid = True
 
     End Sub
 
 #End Region
 
-    Private Sub readMailAddress()
+    Private Sub readMailAddress(p_OutlookRecipient As Outlook.Recipient)
 
         Dim mail As String = ""
 
-        If m_OutlookRecipient.AddressEntry.Type = "EX" Then
+        If p_OutlookRecipient.AddressEntry.Type = "EX" Then
 
             Using db As DatabaseWrapper = DatabaseWrapper.CreateInstance()
 
-                mail = db.ReadScalarDefault(Of String)("SELECT email FROM exchangeaddress WHERE address = @0", "", m_OutlookRecipient.Address)
+                mail = db.ReadScalarDefault(Of String)("SELECT email FROM exchangeaddress WHERE address = @0", "", p_OutlookRecipient.Address)
 
                 If String.IsNullOrEmpty(mail) Then
-                    mail = m_OutlookRecipient.AddressEntry.GetExchangeUser().PrimarySmtpAddress
-                    db.ExecuteNonQuery("INSERT INTO exchangeaddress (address, email) VALUES (@0, @1)", m_OutlookRecipient.Address, mail)
+                    mail = p_OutlookRecipient.AddressEntry.GetExchangeUser().PrimarySmtpAddress
+                    db.ExecuteNonQuery("INSERT INTO exchangeaddress (address, email) VALUES (@0, @1)", p_OutlookRecipient.Address, mail)
                 End If
 
                 m_Email = New MailAddress(mail)
 
             End Using
         Else
-            m_Email = New MailAddress(m_OutlookRecipient.Address)
+            m_Email = New MailAddress(p_OutlookRecipient.Address)
         End If
 
     End Sub
 
-    Private Sub resolveName()
+    Private Sub resolveName(p_OutlookRecipient As Outlook.Recipient)
 
         Dim firstNameFromEmail As String = ""
         Dim lastNameFromEmail As String = ""
@@ -188,7 +187,7 @@ Public Class MailRecipient
         Dim resolvedByEmail, resolvedByDisplayName As Boolean
 
         resolvedByEmail = resolveNameByEmail(firstNameFromEmail, lastNameFromEmail)
-        resolvedByDisplayName = resolveByDisplayName(firstNameFromDisplayName, lastNameFromDisplayName)
+        resolvedByDisplayName = resolveByDisplayName(p_OutlookRecipient, firstNameFromDisplayName, lastNameFromDisplayName)
 
         Select Case True
             Case resolvedByEmail
@@ -276,9 +275,9 @@ Public Class MailRecipient
 
     End Function
 
-    Private Function resolveByDisplayName(ByRef p_FirstName As String, ByRef p_LastName As String) As Boolean
+    Private Function resolveByDisplayName(p_OutlookRecipient As Outlook.Recipient, ByRef p_FirstName As String, ByRef p_LastName As String) As Boolean
 
-        Dim user() As String = m_OutlookRecipient.Name.Split(" "c)
+        Dim user() As String = p_OutlookRecipient.Name.Split(" "c)
 
         If user.Length <> 2 Then
             Return False

@@ -49,7 +49,7 @@
 
                     Case 5
                         .ExecuteNonQuery("CREATE TABLE recipient (email nvarchar (200) NOT NULL, salutation nvarchar (100) NOT NULL, mailcount integer NOT NULL DEFAULT 0, firstname nvarchar (50) NOT NULL DEFAULT '', lastname nvarchar (50) NOT NULL DEFAULT '', displayname nvarchar (100) NOT NULL DEFAULT '', gender nvarchar(1) NOT NULL DEFAULT '', PRIMARY KEY (email));")
-                        .ExecuteNonQuery("INSERT INTO recipient(email,salutation,mailcount,firstname,lastname,shownname,gender) SELECT recipients,text,0,'','','','' FROM salutation;")
+                        .ExecuteNonQuery("INSERT INTO recipient(email,salutation,mailcount,firstname,lastname,displayname,gender) SELECT recipients,text,0,'','','','' FROM salutation;")
                         .ExecuteNonQuery("DROP TABLE salutation")
 
                     Case Else
