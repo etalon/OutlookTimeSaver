@@ -222,7 +222,9 @@ Public Class MailItemHandler
         End If
 
         setRecipients(haveRecipientsChanged)
+
         If haveRecipientsChanged Then
+            Log.Debug("Empfänger haben sich geändert")
             setSalutationByWordEditor()
         End If
 
@@ -234,6 +236,11 @@ Public Class MailItemHandler
         Dim initialRecipientCount As Integer
 
         Log.Debug("SetRecipients.Count: " & m_MailItem.Recipients.Count & " / m_Recipients.Count: " & m_Recipients.Count & " / TO: " & m_MailItem.To)
+
+        If String.IsNullOrEmpty(m_MailItem.To) Then
+            Log.Debug("'To' ist leer, d.h. wird keine Anrede ausgewertet.")
+            Return
+        End If
 
         For Each rec In m_Recipients
             rec.Valid = False
@@ -248,6 +255,7 @@ Public Class MailItemHandler
             End If
 
             If Not rec.Resolved Then
+                Log.Debug("Recipient.Resolve: " & rec.Name)
                 rec.Resolve()
             End If
 

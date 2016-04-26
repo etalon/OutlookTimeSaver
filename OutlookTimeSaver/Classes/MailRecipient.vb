@@ -16,6 +16,7 @@ Public Class MailRecipient
     Private m_Email As MailAddress
     Private m_FirstName As String = ""
     Private m_LastName As String = ""
+    Private m_DisplayName As String = ""
     Private m_Gender As GenderEnum
     Private m_ExistsInDatabase As BoolSetEnum = BoolSetEnum.NotSet
 
@@ -31,7 +32,7 @@ Public Class MailRecipient
 
     Public ReadOnly Property DisplayName As String
         Get
-            Return m_Email.DisplayName
+            Return m_DisplayName
         End Get
     End Property
 
@@ -278,6 +279,10 @@ Public Class MailRecipient
     Private Function resolveByDisplayName(p_OutlookRecipient As Outlook.Recipient, ByRef p_FirstName As String, ByRef p_LastName As String) As Boolean
 
         Dim user() As String = p_OutlookRecipient.Name.Split(" "c)
+
+        m_DisplayName = p_OutlookRecipient.Name
+
+        Log.Debug("DisplayName: " & m_DisplayName)
 
         If user.Length <> 2 Then
             Return False
