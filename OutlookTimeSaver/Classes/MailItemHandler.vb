@@ -84,11 +84,9 @@ Public Class MailItemHandler
         ' Nur so könnte man aus der Datenbank heraus lernen, aber vielleicht ist es auch unnötig.
         If m_Recipients.Count = 1 Then
             With m_Recipients.First
-                If Not .ExistsInDatabase Then
-                    Using db As DatabaseWrapper = DatabaseWrapper.CreateInstance()
-                        db.ExecuteNonQuery("UPDATE recipient SET firstname = @0, lastname = @1, gender = @2, displayname = @3 WHERE email = @4;", .FirstName, .LastName, .Gender, .DisplayName, .EMailAsString)
-                    End Using
-                End If
+                Using db As DatabaseWrapper = DatabaseWrapper.CreateInstance()
+                    db.ExecuteNonQuery("UPDATE recipient SET firstname = @0, lastname = @1, gender = @2, displayname = @3 WHERE email = @4;", .FirstName, .LastName, .Gender, .DisplayName, .EMailAsString)
+                End Using
             End With
         End If
 
@@ -324,17 +322,14 @@ Public Class MailItemHandler
                     m_salutationFromDatabase = salutation
                 Else
                     salutation = Join(m_Recipients.Select(Function(x) x.DefaultSalutation).ToArray, ", ")
+                    salutation &= ", "
                 End If
 
             Case Else
-                salutation = "Sehr geehrte Damen und Herren"
+                salutation = "Sehr geehrte Damen und Herren, "
         End Select
 
         Log.Debug("Automatisch ermittelte Anrede: " & salutation)
-
-        If Not salutation.EndsWith(", ") Then
-            salutation &= ", "
-        End If
 
         Return salutation
 
