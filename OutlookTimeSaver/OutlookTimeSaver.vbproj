@@ -37,7 +37,7 @@
     <PublishUrl>C:\temp\ots\</PublishUrl>
     <InstallUrl />
     <TargetCulture>en</TargetCulture>
-    <ApplicationVersion>1.0.0.75</ApplicationVersion>
+    <ApplicationVersion>1.0.0.77</ApplicationVersion>
     <AutoIncrementApplicationRevision>true</AutoIncrementApplicationRevision>
     <UpdateEnabled>true</UpdateEnabled>
     <UpdateInterval>7</UpdateInterval>
@@ -134,8 +134,8 @@
     </DefineConstants>
     <DefineDebug>false</DefineDebug>
     <DefineTrace>true</DefineTrace>
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
+    <DebugType>Full</DebugType>
+    <Optimize>false</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DocumentationFile>OutlookTimeSaver.xml</DocumentationFile>
     <RegisterForComInterop>false</RegisterForComInterop>
@@ -143,6 +143,7 @@
     <NoWarn>
     </NoWarn>
     <PlatformTarget>x86</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <!--
     This section specifies references for the project.

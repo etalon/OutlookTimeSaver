@@ -6,6 +6,14 @@ Imports System.Runtime.InteropServices
 
 Public Class MailItemHandler
 
+    Public Enum ExecutionCaller
+        NewMailToChanged
+        ResponseMailToChanged
+        ResponseMailSubjectChanged
+        NewMailSubjectChanged
+        AfterResponseMailOpen
+    End Enum
+
     Private WithEvents m_MailItem As Outlook.MailItem
     Private Shared m_OutlookApplication As Outlook.Application
 
@@ -166,7 +174,7 @@ Public Class MailItemHandler
                 Log.Debug("ActiveInspector ist nicht mehr nothing")
             End If
 
-            setRecipientsAndSaluation()
+            setRecipientsAndSaluation(ExecutionCaller.AfterResponseMailOpen)
 
         Catch ex As Exception
             Log.Fatal("runAfterMailOpenThread", ex)
@@ -178,30 +186,31 @@ Public Class MailItemHandler
 
         Try
 
+            If String.IsNullOrEmpty(Name) Then
+                Log.Debug("PropertyChange.Name ist leer")
+                Exit Sub
+            End If
+
             Log.Debug("MailItem_PropertyChange: " & Name)
             m_KnownPropertyChanges.Add(Name.ToLower)
-
-            If ChangesDisabled Then
-                Return
-            End If
 
             Select Case Name.ToLower
                 Case "to"
                     If m_IsNewMail Then
-                        If m_KnownPropertyChanges.Contains("subject") Or m_MailItem.Subject.StartsWith("WG:") Then
-                            setRecipientsAndSaluation()
+                        If m_KnownPropertyChanges.Contains("subject") OrElse m_MailItem.Subject.StartsWith("WG:") Then
+                            setRecipientsAndSaluation(ExecutionCaller.NewMailToChanged)
                         End If
                     Else
-                        setRecipientsAndSaluation()
+                        setRecipientsAndSaluation(ExecutionCaller.ResponseMailToChanged)
                     End If
 
                 Case "subject"
                     If m_IsNewMail Then
                         If m_KnownPropertyChanges.Contains("to") Then
-                            setRecipientsAndSaluation()
+                            setRecipientsAndSaluation(ExecutionCaller.NewMailSubjectChanged)
                         End If
                     Else
-                        setRecipientsAndSaluation()
+                        setRecipientsAndSaluation(ExecutionCaller.ResponseMailSubjectChanged)
                     End If
 
             End Select
@@ -212,7 +221,7 @@ Public Class MailItemHandler
 
     End Sub
 
-    Private Sub setRecipientsAndSaluation()
+    Private Sub setRecipientsAndSaluation(p_ExcecutionCaller As ExecutionCaller)
 
         Dim haveRecipientsChanged As Boolean
 
@@ -221,11 +230,20 @@ Public Class MailItemHandler
             Return
         End If
 
+        Log.Debug("ExecutionCaller: " & p_ExcecutionCaller.ToString)
+
         setRecipients(haveRecipientsChanged)
 
         If haveRecipientsChanged Then
             Log.Debug("Empfänger haben sich geändert")
-            setSalutationByWordEditor()
+            Select Case p_ExcecutionCaller
+                Case ExecutionCaller.NewMailToChanged
+                    ' TODO: Aktuell ist dies zu unsicher
+                    Log.Debug("Anrede welche hätte gesetzt werden sollen: " & getAutomaticSalutation())
+                Case Else
+                    setSalutationByWordEditor()
+            End Select
+
         End If
 
     End Sub
@@ -359,18 +377,5 @@ Public Class MailItemHandler
         End Try
 
     End Function
-
-    Private Sub setBodyCursorPosition(p_NewBody As String, p_Salutation As String)
-
-        With m_WordEditor.Application.Selection
-            Select Case m_BodyFormat
-                Case Outlook.OlBodyFormat.olFormatHTML
-                    .Start = p_Salutation.Length + 2
-                Case Else
-                    .Start = p_Salutation.Length + 2
-            End Select
-        End With
-
-    End Sub
 
 End Class
