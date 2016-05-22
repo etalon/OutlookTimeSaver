@@ -253,6 +253,7 @@
   <ItemGroup>
     <AppDesigner Include="My Project\" />
     <Compile Include="Classes\DatabaseCreator.vb" />
+    <Compile Include="Classes\MailDeleter.vb" />
     <Compile Include="Classes\MailItemHandlerList.vb" />
     <Compile Include="Classes\OutlookTimeSaverConfig.vb" />
     <Compile Include="Classes\General\BinEncodeDecode.vb" />

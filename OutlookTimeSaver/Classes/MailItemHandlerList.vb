@@ -14,10 +14,10 @@
 
     End Sub
 
-    'Public Shared Function GetItem(p_MailItem As Outlook.MailItem) As MailItemHandler
+    Public Shared Function GetItem(p_EntryId As String) As MailItemHandler
 
-    '    Return m_MailItemHandlers.First(Function(x) x.Matchs(p_MailItem))
+        Return m_MailItemHandlers.First(Function(x) x.EntryId = p_EntryId)
 
-    'End Function
+    End Function
 
 End Class

@@ -30,19 +30,32 @@ Public Class MailItemHandler
     Private m_BodyFormat As Outlook.OlBodyFormat
     Private m_IsInlineRespone As Boolean
 
-    Private m_KnownPropertyChanges As New List(Of String)
+    Private m_KnownPropertyChanges As New HashSet(Of String)
 
     Private m_SalutationFromDatabase As String = ""
+
+    Private WithEvents m_SaveTimer As New Windows.Forms.Timer
+    Private Shared m_SavingSyncLock As New Object
+
+    Private m_LastModificationTime As Date
+
+    Public Property EntryId As String
 
     Public Shared Sub PassOutlookApplication(p_OutlookApplication As Outlook.Application)
         m_OutlookApplication = p_OutlookApplication
     End Sub
 
-    Public Property ChangesDisabled As Boolean
+    Private m_ItemSent As Boolean
 
     Private ReadOnly Property isSalutationWritten As Boolean
         Get
             Return Not String.IsNullOrEmpty(m_LastSalutationWritten)
+        End Get
+    End Property
+
+    Private ReadOnly Property isForwardedMessage As Boolean
+        Get
+            Return Not String.IsNullOrEmpty(m_MailItem.Subject) AndAlso m_MailItem.Subject.StartsWith("WG:")
         End Get
     End Property
 
@@ -53,6 +66,14 @@ Public Class MailItemHandler
             End If
 
             Return Join(m_Recipients.Select(Function(x) x.EMailAsString).ToArray, ",")
+        End Get
+    End Property
+
+    Public ReadOnly Property HasManuallyChanged As Boolean
+        Get
+
+            Return m_LastModificationTime <> m_MailItem.LastModificationTime
+
         End Get
     End Property
 
@@ -70,6 +91,161 @@ Public Class MailItemHandler
 
     End Sub
 
+#Region "Events"
+
+    Private Sub m_MailItem_Open() Handles m_MailItem.Open
+
+        Log.Debug("MailItem_Open")
+
+        m_WordEditor = DirectCast(m_MailItem.GetInspector.WordEditor, Word.Document)
+
+        If String.IsNullOrEmpty(m_MailItem.To) Then
+            m_IsNewMail = True
+            Return ' Neue Mail
+        End If
+
+        m_AfterMailOpenThread = New Thread(AddressOf runAfterResponseMailOpenThread)
+        m_AfterMailOpenThread.Start()
+
+    End Sub
+
+    Private Sub m_MailItem_Close(ByRef cancel As Boolean) Handles m_MailItem.Close
+
+        Log.Debug("MailItem_Close")
+
+        If Not m_ItemSent Then
+            Log.Debug("Mail zum Löschen vorsehen")
+            MailDeleter.Add(m_MailItem)
+        Else
+            MailItemHandlerList.Remove(Me)
+        End If
+
+    End Sub
+
+    Private Sub m_MailItem_Unload() Handles m_MailItem.Unload
+
+        Log.Debug("MailItem_Unload")
+
+    End Sub
+
+    Private Sub m_MailItem_Send() Handles m_MailItem.Send
+
+        Log.Debug("Nachricht wird gesendet...")
+        m_ItemSent = True
+
+        SaveSalutationToReceipients()
+        MailItemHandlerList.Remove(Me)
+
+    End Sub
+
+    ''' <summary>
+    ''' Achtung: Innerhalb dieser Funktion darf kein "Save" ausgeführt werden. Dies zerstört die Recipients-Collection
+    ''' </summary>
+    ''' <param name="Name"></param>
+    Private Sub m_MailItem_PropertyChange(Name As String) Handles m_MailItem.PropertyChange
+
+        SyncLock m_SavingSyncLock
+
+            Try
+
+                If String.IsNullOrEmpty(Name) Then
+                    Log.Debug("PropertyChange.Name ist leer")
+                    Exit Sub
+                End If
+
+                Log.Debug("MailItem_PropertyChange: " & Name)
+
+                If Not m_KnownPropertyChanges.Contains(Name.ToLower) Then
+                    m_KnownPropertyChanges.Add(Name.ToLower)
+                End If
+
+                Select Case Name.ToLower
+                    Case "to"
+
+                    Case "bcc"
+
+                        If m_IsNewMail AndAlso Not m_KnownPropertyChanges.Contains("subject") AndAlso Not isForwardedMessage Then
+                            ' Wenn wir eine neue Mail haben und der Betreff wurde noch nicht gesetzt, müssen wir auch noch keine Anrede setzen
+                            Return
+                        End If
+
+                        m_SaveTimer.Interval = 1
+                        m_SaveTimer.Enabled = True
+
+                    Case "subject"
+
+                        If Not String.IsNullOrEmpty(m_LastSalutationWritten) Then
+                            ' Die Anrede setzen wir nur ein einziges Mal zu Beginn
+                            Return
+                        End If
+
+                        If Not m_IsNewMail Then
+                            Return
+                        End If
+
+                        If Not m_KnownPropertyChanges.Contains("bcc") Then
+                            Return
+                        End If
+
+                        m_SaveTimer.Interval = 1
+                        m_SaveTimer.Enabled = True
+
+
+                End Select
+
+            Catch ex As Exception
+                Log.Fatal("MailItem_PropertyChange", ex)
+            End Try
+
+        End SyncLock
+
+    End Sub
+
+    Private Sub SaveTimerTicke() Handles m_SaveTimer.Tick
+
+        SyncLock m_SavingSyncLock
+            m_SaveTimer.Enabled = False
+            m_MailItem.Save()
+            m_LastModificationTime = m_MailItem.LastModificationTime
+            EntryId = m_MailItem.EntryID
+        End SyncLock
+
+    End Sub
+
+    Private Sub m_MailItem_BeforeCheckNames() Handles m_MailItem.BeforeCheckNames
+
+        Log.Debug("MailItem_BeforeCheckNames")
+
+        If m_MailItem.UserProperties.Find("HardDelete") IsNot Nothing Then
+            ' Mail ist bereits zum Löschen vorgemerkt und darf nicht mehr verändert werden
+            Return
+        End If
+
+        setRecipientsAndSaluation(ExecutionCaller.NewMailSubjectChanged)
+
+    End Sub
+
+    Private Sub runAfterResponseMailOpenThread()
+
+        Try
+            If Not m_IsInlineRespone Then
+                While m_OutlookApplication.ActiveInspector Is Nothing
+                    Thread.Sleep(50)
+                End While
+
+                Log.Debug("ActiveInspector ist nicht mehr Nothing")
+            End If
+
+            setRecipientsAndSaluation(ExecutionCaller.AfterResponseMailOpen)
+
+        Catch ex As Exception
+            Log.Fatal("runAfterMailOpenThread", ex)
+        End Try
+
+    End Sub
+
+#End Region
+
     Public Sub SaveSalutationToReceipients()
 
         Dim salutation As String = getCurrentSalutation()
@@ -81,7 +257,7 @@ Public Class MailItemHandler
         If Not salutation.SameText(m_SalutationFromDatabase) Then
 
             Using db As DatabaseWrapper = DatabaseWrapper.CreateInstance()
-                db.ExecuteNonQuery("INSERT OR REPLACE INTO recipient (email,salutation,mailcount) VALUES (@0,@1,@2);", salutationTableKey, salutation, 0)
+                db.ExecuteNonQuery("INSERT Or REPLACE INTO recipient (email, salutation, mailcount) VALUES (@0,@1,@2);", salutationTableKey, salutation, 0)
             End Using
 
             Log.Debug(String.Format("Anrede zu {0} wurde aktualisiert: {1}", salutationTableKey, salutation))
@@ -137,90 +313,6 @@ Public Class MailItemHandler
 
     End Function
 
-    Private Sub m_MailItem_Open() Handles m_MailItem.Open
-
-        Log.Debug("MailItem_Open")
-
-        m_WordEditor = DirectCast(m_MailItem.GetInspector.WordEditor, Word.Document)
-
-        If String.IsNullOrEmpty(m_MailItem.To) Then
-            m_IsNewMail = True
-            Return ' Neue Mail
-        End If
-
-        m_AfterMailOpenThread = New Thread(AddressOf runAfterResponseMailOpenThread)
-        m_AfterMailOpenThread.Start()
-
-    End Sub
-
-    Private Sub m_MailItem_Send() Handles m_MailItem.Send
-
-        Log.Debug("Nachricht wird gesendet...")
-        ChangesDisabled = True
-
-        SaveSalutationToReceipients()
-        MailItemHandlerList.Remove(Me)
-
-    End Sub
-
-    Private Sub runAfterResponseMailOpenThread()
-
-        Try
-            If Not m_IsInlineRespone Then
-                While m_OutlookApplication.ActiveInspector Is Nothing
-                    Thread.Sleep(50)
-                End While
-
-                Log.Debug("ActiveInspector ist nicht mehr nothing")
-            End If
-
-            setRecipientsAndSaluation(ExecutionCaller.AfterResponseMailOpen)
-
-        Catch ex As Exception
-            Log.Fatal("runAfterMailOpenThread", ex)
-        End Try
-
-    End Sub
-
-    Private Sub m_MailItem_PropertyChange(Name As String) Handles m_MailItem.PropertyChange
-
-        Try
-
-            If String.IsNullOrEmpty(Name) Then
-                Log.Debug("PropertyChange.Name ist leer")
-                Exit Sub
-            End If
-
-            Log.Debug("MailItem_PropertyChange: " & Name)
-            m_KnownPropertyChanges.Add(Name.ToLower)
-
-            Select Case Name.ToLower
-                Case "to"
-                    If m_IsNewMail Then
-                        If m_KnownPropertyChanges.Contains("subject") OrElse m_MailItem.Subject.StartsWith("WG:") Then
-                            setRecipientsAndSaluation(ExecutionCaller.NewMailToChanged)
-                        End If
-                    Else
-                        setRecipientsAndSaluation(ExecutionCaller.ResponseMailToChanged)
-                    End If
-
-                Case "subject"
-                    If m_IsNewMail Then
-                        If m_KnownPropertyChanges.Contains("to") Then
-                            setRecipientsAndSaluation(ExecutionCaller.NewMailSubjectChanged)
-                        End If
-                    Else
-                        setRecipientsAndSaluation(ExecutionCaller.ResponseMailSubjectChanged)
-                    End If
-
-            End Select
-
-        Catch ex As Exception
-            Log.Fatal("MailItem_PropertyChange", ex)
-        End Try
-
-    End Sub
-
     Private Sub setRecipientsAndSaluation(p_ExcecutionCaller As ExecutionCaller)
 
         Dim haveRecipientsChanged As Boolean
@@ -253,12 +345,12 @@ Public Class MailItemHandler
         Dim newRecipient As MailRecipient
         Dim initialRecipientCount As Integer
 
-        Log.Debug("SetRecipients.Count: " & m_MailItem.Recipients.Count & " / m_Recipients.Count: " & m_Recipients.Count & " / TO: " & m_MailItem.To)
+        Log.Debug("SetRecipients.Count: " & m_MailItem.Recipients.Count & " / m_Recipients.Count: " & m_Recipients.Count) ' & " / TO: " & m_MailItem.To)
 
-        If String.IsNullOrEmpty(m_MailItem.To) Then
-            Log.Debug("'To' ist leer, d.h. wird keine Anrede ausgewertet.")
-            Return
-        End If
+        'If String.IsNullOrEmpty(m_MailItem.To) Then
+        '    Log.Debug("'To' ist leer, d.h. wird keine Anrede ausgewertet.")
+        '    Return
+        'End If
 
         For Each rec In m_Recipients
             rec.Valid = False
@@ -272,10 +364,10 @@ Public Class MailItemHandler
                 Continue For
             End If
 
-            If Not rec.Resolved Then
-                Log.Debug("Recipient.Resolve: " & rec.Name)
-                rec.Resolve()
-            End If
+            'If Not rec.Resolved Then
+            '    Log.Debug("Recipient.Resolve: " & rec.Name)
+            '    rec.Resolve()
+            'End If
 
             If String.IsNullOrEmpty(rec.Address) Then
                 Continue For
@@ -334,7 +426,12 @@ Public Class MailItemHandler
             Case 1
 
                 salutation = m_Recipients(0).GetSalutation(isFromDatabase)
-                If isFromDatabase Then m_SalutationFromDatabase = salutation
+                If isFromDatabase Then
+                    m_SalutationFromDatabase = salutation
+                Else
+                    ' Bei der Default-Anrede hängen wir noch das Komma an
+                    salutation &= ", "
+                End If
 
             Case 2
 

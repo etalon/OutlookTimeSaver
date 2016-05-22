@@ -1,4 +1,6 @@
-﻿Public Class DeletedItemsHandler
+﻿Imports System.Runtime.InteropServices
+
+Public Class DeletedItemsHandler
 
     Private m_TrayFolder As Outlook.MAPIFolder
     Private WithEvents m_TrayItems As Outlook.Items
@@ -20,10 +22,26 @@
 
     Private Sub TrayItems_ItemAdd(p_Item As Object) Handles m_TrayItems.ItemAdd
 
+        Dim mail As Outlook.MailItem
+
         Log.Debug("TrayItems_ItemAdd - Start")
 
         If TypeOf p_Item Is Outlook.MailItem Then
-            DirectCast(p_Item, Outlook.MailItem).UnRead = False
+
+            mail = DirectCast(p_Item, Outlook.MailItem)
+            With mail
+                If .UserProperties.Find("HardDelete") IsNot Nothing Then
+                    Log.Debug("Mail vollständig löschen, da es nur ein Entwurf war...")
+                    .Delete()
+                    Return
+                End If
+
+                .UnRead = False
+
+            End With
+
+            Marshal.ReleaseComObject(mail)
+
         End If
 
         Log.Debug("TrayItems_ItemAdd - Ende")

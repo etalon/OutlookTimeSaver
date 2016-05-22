@@ -40,14 +40,14 @@ Public Class ThisAddIn
 
             End With
 
-            Log.Debug("Started")
-
             m_Inspectors = Application.Inspectors
             m_Explorer = Application.ActiveExplorer
 
             MailItemHandler.PassOutlookApplication(Application)
 
             m_MovedItemsUnreader = New DeletedItemsHandler(Application)
+
+            Log.Debug("OutlookTimeSaver-Addin started")
 
         Catch ex As Exception
             Log.Fatal("Schwerer Fehler bei Programmstart", ex)

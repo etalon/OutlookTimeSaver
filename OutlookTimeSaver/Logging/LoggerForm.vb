@@ -4,6 +4,9 @@
 
     Public Sub New()
 
+        Dim dgvCellStyleTimestamp = New DataGridViewCellStyle()
+        dgvCellStyleTimestamp.Format = "HH:mm:ss:fff"
+
         InitializeComponent()
 
         With m_LoggingEventsBindingSource
@@ -22,7 +25,7 @@
             .Columns("LoggerName").Visible = False
             .Columns("LocationInformation").Visible = False
             .Columns("Repository").Visible = False
-
+            .Columns("Timestamp").DefaultCellStyle = dgvCellStyleTimestamp
         End With
 
     End Sub
@@ -59,4 +62,7 @@
 
     End Sub
 
+    Private Sub ClearToolStripMenuItem_Click_1(sender As Object, e As EventArgs) Handles ClearToolStripMenuItem.Click
+        dgvLog.Rows.Clear()
+    End Sub
 End Class

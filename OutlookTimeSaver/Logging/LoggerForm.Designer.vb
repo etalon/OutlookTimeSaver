@@ -22,40 +22,54 @@ Partial Class LoggerForm
     'Do not modify it using the code editor.
     <System.Diagnostics.DebuggerStepThrough()> _
     Private Sub InitializeComponent()
-        Me.components = New System.ComponentModel.Container()
-        Me.ContextMenuStrip1 = New System.Windows.Forms.ContextMenuStrip(Me.components)
         Me.dgvLog = New System.Windows.Forms.DataGridView()
+        Me.MenuStrip1 = New System.Windows.Forms.MenuStrip()
+        Me.ClearToolStripMenuItem = New System.Windows.Forms.ToolStripMenuItem()
         CType(Me.dgvLog, System.ComponentModel.ISupportInitialize).BeginInit()
+        Me.MenuStrip1.SuspendLayout()
         Me.SuspendLayout()
-        '
-        'ContextMenuStrip1
-        '
-        Me.ContextMenuStrip1.Name = "ContextMenuStrip1"
-        Me.ContextMenuStrip1.Size = New System.Drawing.Size(61, 4)
         '
         'dgvLog
         '
         Me.dgvLog.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize
         Me.dgvLog.Dock = System.Windows.Forms.DockStyle.Fill
-        Me.dgvLog.Location = New System.Drawing.Point(0, 0)
+        Me.dgvLog.Location = New System.Drawing.Point(0, 24)
         Me.dgvLog.Name = "dgvLog"
-        Me.dgvLog.Size = New System.Drawing.Size(375, 617)
+        Me.dgvLog.Size = New System.Drawing.Size(375, 593)
         Me.dgvLog.TabIndex = 2
+        '
+        'MenuStrip1
+        '
+        Me.MenuStrip1.Items.AddRange(New System.Windows.Forms.ToolStripItem() {Me.ClearToolStripMenuItem})
+        Me.MenuStrip1.Location = New System.Drawing.Point(0, 0)
+        Me.MenuStrip1.Name = "MenuStrip1"
+        Me.MenuStrip1.Size = New System.Drawing.Size(375, 24)
+        Me.MenuStrip1.TabIndex = 3
+        Me.MenuStrip1.Text = "MenuStrip1"
+        '
+        'ClearToolStripMenuItem
+        '
+        Me.ClearToolStripMenuItem.Name = "ClearToolStripMenuItem"
+        Me.ClearToolStripMenuItem.Size = New System.Drawing.Size(46, 20)
+        Me.ClearToolStripMenuItem.Text = "Clear"
         '
         'LoggerForm
         '
         Me.AutoScaleDimensions = New System.Drawing.SizeF(6.0!, 13.0!)
         Me.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font
         Me.ClientSize = New System.Drawing.Size(375, 617)
-        Me.Top = 800
         Me.Controls.Add(Me.dgvLog)
+        Me.Controls.Add(Me.MenuStrip1)
         Me.Name = "LoggerForm"
         Me.Text = "LoggerForm"
         CType(Me.dgvLog, System.ComponentModel.ISupportInitialize).EndInit()
+        Me.MenuStrip1.ResumeLayout(False)
+        Me.MenuStrip1.PerformLayout()
         Me.ResumeLayout(False)
+        Me.PerformLayout()
 
     End Sub
-
-    Friend WithEvents ContextMenuStrip1 As ContextMenuStrip
     Friend WithEvents dgvLog As DataGridView
+    Friend WithEvents MenuStrip1 As MenuStrip
+    Friend WithEvents ClearToolStripMenuItem As ToolStripMenuItem
 End Class
