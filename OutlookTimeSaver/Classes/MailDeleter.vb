@@ -27,7 +27,7 @@ Public Class MailDeleter
     Private Shared Sub CheckMailToDelete()
 
         Dim entryId As String
-
+        Dim mailItemHandlerObj As MailItemHandler = Nothing
         Try
 
             System.Threading.Thread.Sleep(15000)
@@ -37,7 +37,12 @@ Public Class MailDeleter
 
                     entryId = m.MailItem.EntryID
 
-                    If MailItemHandlerList.GetItem(m.MailItem.EntryID).HasManuallyChanged Then
+                    If Not MailItemHandlerList.TryGetItem(entryId, mailItemHandlerObj) Then
+                        Log.Debug("MailItem ist nicht mehr in der MailItemHandlerListe vorhanden")
+                        Continue For
+                    End If
+
+                    If mailItemHandlerObj.HasManuallyChanged Then
                         Log.Debug("Mail wurde verändert, also nicht löschen")
                     Else
                         Log.Debug("Mail wurde nicht verändert, also löschen")

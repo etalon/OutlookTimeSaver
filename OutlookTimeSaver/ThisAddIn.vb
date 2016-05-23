@@ -62,12 +62,12 @@ Public Class ThisAddIn
 
     Private Sub m_Explorer_InlineResponse() Handles m_Explorer.InlineResponse
 
-        Dim setSalutation As Boolean
+        Dim openedFromDrafts As Boolean
 
         Try
             m_AllowNewMailItemsByInspector = False
-            setSalutation = m_Explorer.CurrentFolder.EntryID <> Application.Session.GetDefaultFolder(Outlook.OlDefaultFolders.olFolderDrafts).EntryID
-            MailItemHandlerList.Add(TryCast(m_Explorer.ActiveInlineResponse, Outlook.MailItem), True, setSalutation)
+            openedFromDrafts = m_Explorer.CurrentFolder.EntryID = Application.Session.GetDefaultFolder(Outlook.OlDefaultFolders.olFolderDrafts).EntryID
+            MailItemHandlerList.Add(TryCast(m_Explorer.ActiveInlineResponse, Outlook.MailItem), True, openedFromDrafts)
         Finally
             m_AllowNewMailItemsByInspector = True
         End Try
@@ -87,7 +87,14 @@ Public Class ThisAddIn
 
             Select Case True
                 Case TypeOf p_Inspector.CurrentItem Is Outlook.MailItem
-                    MailItemHandlerList.Add(TryCast(p_Inspector.CurrentItem, Outlook.MailItem), False, True)
+
+                    ' TODO: Wie können wir feststellen ob die Mail aus dem Drafts-Ordner geöffnet wurde???
+
+                    Dim openedFromDrafts As Boolean = m_Explorer.CurrentFolder.EntryID = Application.Session.GetDefaultFolder(Outlook.OlDefaultFolders.olFolderDrafts).EntryID
+                    Log.Debug("openedFromDrafts = " & openedFromDrafts)
+                    Log.Debug(DirectCast(DirectCast(p_Inspector.CurrentItem, Outlook.MailItem).Parent, Outlook.MAPIFolder).Name)
+
+                    MailItemHandlerList.Add(TryCast(p_Inspector.CurrentItem, Outlook.MailItem), False, False)
                 Case Else
                     Log.Debug("Inspector (" & p_Inspector.Caption & ") nicht aufgenommen")
             End Select

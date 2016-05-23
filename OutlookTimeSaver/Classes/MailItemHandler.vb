@@ -6,14 +6,6 @@ Imports System.Runtime.InteropServices
 
 Public Class MailItemHandler
 
-    Public Enum ExecutionCaller
-        NewMailToChanged
-        ResponseMailToChanged
-        ResponseMailSubjectChanged
-        NewMailSubjectChanged
-        AfterResponseMailOpen
-    End Enum
-
     Private WithEvents m_MailItem As Outlook.MailItem
     Private Shared m_OutlookApplication As Outlook.Application
 
@@ -29,7 +21,7 @@ Public Class MailItemHandler
     Private m_LastSalutationWritten As String
     Private m_BodyFormat As Outlook.OlBodyFormat
     Private m_IsInlineRespone As Boolean
-    Private m_SetSalutation As Boolean
+    Private m_OpenedFromDrafts As Boolean
 
     Private m_KnownPropertyChanges As New HashSet(Of String)
 
@@ -79,14 +71,14 @@ Public Class MailItemHandler
         End Get
     End Property
 
-    Public Sub New(p_MailItem As Outlook.MailItem, p_IsInlineResponse As Boolean, p_SetSalutation As Boolean)
+    Public Sub New(p_MailItem As Outlook.MailItem, p_IsInlineResponse As Boolean, p_OpenedFromDrafts As Boolean)
 
         Log.Debug("New MailItem")
 
         m_MailItem = p_MailItem
         m_BodyFormat = m_MailItem.BodyFormat
         m_IsInlineRespone = p_IsInlineResponse
-        m_SetSalutation = p_SetSalutation
+        m_OpenedFromDrafts = p_OpenedFromDrafts
 
         If m_IsInlineRespone Then
             m_MailItem_Open()
@@ -116,11 +108,12 @@ Public Class MailItemHandler
 
         Log.Debug("MailItem_Close")
 
-        If Not m_ItemSent Then
-            Log.Debug("Mail zum Löschen vorsehen")
-            MailDeleter.Add(m_MailItem)
-        Else
+        If m_ItemSent Or m_OpenedFromDrafts Then
+            ' Die Mail nur aus der Liste entfernen, aber nicht löschen. Entwurf wird also beibehalten
             MailItemHandlerList.Remove(Me)
+        Else
+            Log.Debug("Löschung der Mail wird in Kürze überprüft")
+            MailDeleter.Add(m_MailItem)
         End If
 
     End Sub
@@ -206,8 +199,6 @@ Public Class MailItemHandler
 
     Private Sub SaveTimerTicke() Handles m_SaveTimer.Tick
 
-        Log.Debug("Save via Timer...")
-
         SyncLock m_SavingSyncLock
             m_SaveTimer.Enabled = False
             m_MailItem.Save()
@@ -226,7 +217,7 @@ Public Class MailItemHandler
             Return
         End If
 
-        setRecipientsAndSaluation(ExecutionCaller.NewMailSubjectChanged)
+        setRecipientsAndSaluation()
 
     End Sub
 
@@ -241,7 +232,7 @@ Public Class MailItemHandler
                 Log.Debug("ActiveInspector ist nicht mehr Nothing")
             End If
 
-            setRecipientsAndSaluation(ExecutionCaller.AfterResponseMailOpen)
+            setRecipientsAndSaluation()
 
         Catch ex As Exception
             Log.Fatal("runAfterMailOpenThread", ex)
@@ -318,11 +309,11 @@ Public Class MailItemHandler
 
     End Function
 
-    Private Sub setRecipientsAndSaluation(p_ExcecutionCaller As ExecutionCaller)
+    Private Sub setRecipientsAndSaluation()
 
         Dim haveRecipientsChanged As Boolean
 
-        If Not m_SetSalutation Then
+        If m_OpenedFromDrafts Then
             Log.Debug("Anrede nicht setzen...")
             Return
         End If
@@ -332,20 +323,11 @@ Public Class MailItemHandler
             Return
         End If
 
-        Log.Debug("ExecutionCaller: " & p_ExcecutionCaller.ToString)
-
         setRecipients(haveRecipientsChanged)
 
         If haveRecipientsChanged Then
             Log.Debug("Empfänger haben sich geändert")
-            Select Case p_ExcecutionCaller
-                Case ExecutionCaller.NewMailToChanged
-                    ' TODO: Aktuell ist dies zu unsicher
-                    Log.Debug("Anrede welche hätte gesetzt werden sollen: " & getAutomaticSalutation())
-                Case Else
-                    setSalutationByWordEditor()
-            End Select
-
+            setSalutationByWordEditor()
         End If
 
     End Sub
