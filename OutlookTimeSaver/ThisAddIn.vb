@@ -62,9 +62,12 @@ Public Class ThisAddIn
 
     Private Sub m_Explorer_InlineResponse() Handles m_Explorer.InlineResponse
 
+        Dim setSalutation As Boolean
+
         Try
             m_AllowNewMailItemsByInspector = False
-            MailItemHandlerList.Add(TryCast(m_Explorer.ActiveInlineResponse, Outlook.MailItem), True)
+            setSalutation = m_Explorer.CurrentFolder.EntryID <> Application.Session.GetDefaultFolder(Outlook.OlDefaultFolders.olFolderDrafts).EntryID
+            MailItemHandlerList.Add(TryCast(m_Explorer.ActiveInlineResponse, Outlook.MailItem), True, setSalutation)
         Finally
             m_AllowNewMailItemsByInspector = True
         End Try
@@ -84,7 +87,7 @@ Public Class ThisAddIn
 
             Select Case True
                 Case TypeOf p_Inspector.CurrentItem Is Outlook.MailItem
-                    MailItemHandlerList.Add(TryCast(p_Inspector.CurrentItem, Outlook.MailItem), False)
+                    MailItemHandlerList.Add(TryCast(p_Inspector.CurrentItem, Outlook.MailItem), False, True)
                 Case Else
                     Log.Debug("Inspector (" & p_Inspector.Caption & ") nicht aufgenommen")
             End Select

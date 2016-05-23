@@ -26,6 +26,8 @@ Public Class MailDeleter
 
     Private Shared Sub CheckMailToDelete()
 
+        Dim entryId As String
+
         Try
 
             System.Threading.Thread.Sleep(15000)
@@ -33,15 +35,19 @@ Public Class MailDeleter
             SyncLock m_MailsToDeleteSyncLock
                 For Each m In m_MailsToDelete
 
-                    If Not MailItemHandlerList.GetItem(m.MailItem.EntryID).HasManuallyChanged Then
+                    entryId = m.MailItem.EntryID
+
+                    If MailItemHandlerList.GetItem(m.MailItem.EntryID).HasManuallyChanged Then
+                        Log.Debug("Mail wurde verändert, also nicht löschen")
+                    Else
                         Log.Debug("Mail wurde nicht verändert, also löschen")
                         m.MailItem.UserProperties.Add("HardDelete", Microsoft.Office.Interop.Outlook.OlUserPropertyType.olText)
                         m.MailItem.Save()
                         m.MailItem.Delete()
-
-                        Marshal.ReleaseComObject(m.MailItem)
-
                     End If
+
+                    Marshal.ReleaseComObject(m.MailItem)
+                    MailItemHandlerList.Remove(entryId)
 
                 Next
 

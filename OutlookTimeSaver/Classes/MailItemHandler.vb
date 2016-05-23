@@ -29,6 +29,7 @@ Public Class MailItemHandler
     Private m_LastSalutationWritten As String
     Private m_BodyFormat As Outlook.OlBodyFormat
     Private m_IsInlineRespone As Boolean
+    Private m_SetSalutation As Boolean
 
     Private m_KnownPropertyChanges As New HashSet(Of String)
 
@@ -37,7 +38,7 @@ Public Class MailItemHandler
     Private WithEvents m_SaveTimer As New Windows.Forms.Timer
     Private Shared m_SavingSyncLock As New Object
 
-    Private m_LastModificationTime As Date
+    Private m_ReceivedTime As Date
 
     Public Property EntryId As String
 
@@ -71,19 +72,21 @@ Public Class MailItemHandler
 
     Public ReadOnly Property HasManuallyChanged As Boolean
         Get
+            Log.Debug(m_ReceivedTime & "<>" & m_MailItem.ReceivedTime)
 
-            Return m_LastModificationTime <> m_MailItem.LastModificationTime
+            Return m_ReceivedTime <> m_MailItem.ReceivedTime
 
         End Get
     End Property
 
-    Public Sub New(p_MailItem As Outlook.MailItem, p_IsInlineResponse As Boolean)
+    Public Sub New(p_MailItem As Outlook.MailItem, p_IsInlineResponse As Boolean, p_SetSalutation As Boolean)
 
         Log.Debug("New MailItem")
 
         m_MailItem = p_MailItem
         m_BodyFormat = m_MailItem.BodyFormat
         m_IsInlineRespone = p_IsInlineResponse
+        m_SetSalutation = p_SetSalutation
 
         If m_IsInlineRespone Then
             m_MailItem_Open()
@@ -203,10 +206,12 @@ Public Class MailItemHandler
 
     Private Sub SaveTimerTicke() Handles m_SaveTimer.Tick
 
+        Log.Debug("Save via Timer...")
+
         SyncLock m_SavingSyncLock
             m_SaveTimer.Enabled = False
             m_MailItem.Save()
-            m_LastModificationTime = m_MailItem.LastModificationTime
+            m_ReceivedTime = m_MailItem.ReceivedTime
             EntryId = m_MailItem.EntryID
         End SyncLock
 
@@ -316,6 +321,11 @@ Public Class MailItemHandler
     Private Sub setRecipientsAndSaluation(p_ExcecutionCaller As ExecutionCaller)
 
         Dim haveRecipientsChanged As Boolean
+
+        If Not m_SetSalutation Then
+            Log.Debug("Anrede nicht setzen...")
+            Return
+        End If
 
         If Config.My.NoSalutationAtTopicStartsWith.Exists(Function(x) m_MailItem.Subject.StartsWith(x, StringComparison.CurrentCultureIgnoreCase)) Then
             Log.Debug("Anrede wird nicht gesetzt, da Überschrift in der Ausschlussliste enthalten ist.")
