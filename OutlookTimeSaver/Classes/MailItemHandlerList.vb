@@ -14,6 +14,12 @@
 
     End Sub
 
+    Public Shared Function Exists(p_EntryId As String) As Boolean
+
+        Return m_MailItemHandlers.Any(Function(x) x.EntryId = p_EntryId)
+
+    End Function
+
     Public Shared Sub Remove(p_EntryId As String)
 
         Dim mailItemHandlerObj As MailItemHandler

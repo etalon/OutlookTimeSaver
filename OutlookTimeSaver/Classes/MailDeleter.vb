@@ -46,13 +46,15 @@ Public Class MailDeleter
                         Log.Debug("Mail wurde verändert, also nicht löschen")
                     Else
                         Log.Debug("Mail wurde nicht verändert, also löschen")
+
+                        mailItemHandlerObj.Dispose()
+
                         m.MailItem.UserProperties.Add("HardDelete", Microsoft.Office.Interop.Outlook.OlUserPropertyType.olText)
                         m.MailItem.Save()
                         m.MailItem.Delete()
                     End If
 
                     Marshal.ReleaseComObject(m.MailItem)
-                    MailItemHandlerList.Remove(entryId)
 
                 Next
 

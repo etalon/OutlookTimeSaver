@@ -5,6 +5,7 @@ Imports Microsoft.Office.Interop
 Imports System.Runtime.InteropServices
 
 Public Class MailItemHandler
+    Implements IDisposable
 
     Private WithEvents m_MailItem As Outlook.MailItem
     Private Shared m_OutlookApplication As Outlook.Application
@@ -16,7 +17,7 @@ Public Class MailItemHandler
 
     Private m_WordEditor As Word.Document
 
-    Private m_AfterMailOpenThread As Thread
+    Private WithEvents m_AfterResponseMailOpenTimer As Windows.Forms.Timer
     Private m_IsNewMail As Boolean
     Private m_LastSalutationWritten As String
     Private m_BodyFormat As Outlook.OlBodyFormat
@@ -64,16 +65,13 @@ Public Class MailItemHandler
 
     Public ReadOnly Property HasManuallyChanged As Boolean
         Get
-            Log.Debug(m_ReceivedTime & "<>" & m_MailItem.ReceivedTime)
-
             Return m_ReceivedTime <> m_MailItem.ReceivedTime
-
         End Get
     End Property
 
     Public Sub New(p_MailItem As Outlook.MailItem, p_IsInlineResponse As Boolean, p_OpenedFromDrafts As Boolean)
 
-        Log.Debug("New MailItem")
+        Log.Debug(String.Format("New MailItem (IsInlineRespone = {0}, OpenedFromDrafts = {1}", p_IsInlineResponse, p_OpenedFromDrafts))
 
         m_MailItem = p_MailItem
         m_BodyFormat = m_MailItem.BodyFormat
@@ -90,7 +88,7 @@ Public Class MailItemHandler
 
     Private Sub m_MailItem_Open() Handles m_MailItem.Open
 
-        Log.Debug("MailItem_Open")
+        Log.Debug("MailItem_Open - " & m_MailItem.EntryID)
 
         m_WordEditor = DirectCast(m_MailItem.GetInspector.WordEditor, Word.Document)
 
@@ -99,8 +97,9 @@ Public Class MailItemHandler
             Return ' Neue Mail
         End If
 
-        m_AfterMailOpenThread = New Thread(AddressOf runAfterResponseMailOpenThread)
-        m_AfterMailOpenThread.Start()
+        m_AfterResponseMailOpenTimer = New Windows.Forms.Timer
+        m_AfterResponseMailOpenTimer.Interval = 1
+        m_AfterResponseMailOpenTimer.Enabled = True
 
     End Sub
 
@@ -110,7 +109,7 @@ Public Class MailItemHandler
 
         If m_ItemSent Or m_OpenedFromDrafts Then
             ' Die Mail nur aus der Liste entfernen, aber nicht löschen. Entwurf wird also beibehalten
-            MailItemHandlerList.Remove(Me)
+            Me.Dispose()
         Else
             Log.Debug("Löschung der Mail wird in Kürze überprüft")
             MailDeleter.Add(m_MailItem)
@@ -221,7 +220,9 @@ Public Class MailItemHandler
 
     End Sub
 
-    Private Sub runAfterResponseMailOpenThread()
+    Private Sub runAfterResponseMailOpenTimer() Handles m_AfterResponseMailOpenTimer.Tick
+
+        m_AfterResponseMailOpenTimer.Enabled = False
 
         Try
             If Not m_IsInlineRespone Then
@@ -339,11 +340,6 @@ Public Class MailItemHandler
 
         Log.Debug("SetRecipients.Count: " & m_MailItem.Recipients.Count & " / m_Recipients.Count: " & m_Recipients.Count) ' & " / TO: " & m_MailItem.To)
 
-        'If String.IsNullOrEmpty(m_MailItem.To) Then
-        '    Log.Debug("'To' ist leer, d.h. wird keine Anrede ausgewertet.")
-        '    Return
-        'End If
-
         For Each rec In m_Recipients
             rec.Valid = False
         Next
@@ -355,11 +351,6 @@ Public Class MailItemHandler
             If rec.Type <> OutlookRecipientType.To Then
                 Continue For
             End If
-
-            'If Not rec.Resolved Then
-            '    Log.Debug("Recipient.Resolve: " & rec.Name)
-            '    rec.Resolve()
-            'End If
 
             If String.IsNullOrEmpty(rec.Address) Then
                 Continue For
@@ -466,5 +457,34 @@ Public Class MailItemHandler
         End Try
 
     End Function
+
+#Region "IDisposable Support"
+    Private disposedValue As Boolean ' To detect redundant calls
+
+    ' IDisposable
+    Protected Overridable Sub Dispose(disposing As Boolean)
+        If Not disposedValue Then
+            If disposing Then
+
+                If m_AfterResponseMailOpenTimer IsNot Nothing Then m_AfterResponseMailOpenTimer.Dispose()
+                If m_SaveTimer IsNot Nothing Then m_SaveTimer.Dispose()
+                MailItemHandlerList.Remove(Me)
+
+            End If
+
+            If m_MailItem IsNot Nothing Then
+                Marshal.ReleaseComObject(m_MailItem)
+                m_MailItem = Nothing
+            End If
+
+        End If
+        disposedValue = True
+    End Sub
+
+    ' This code added by Visual Basic to correctly implement the disposable pattern.
+    Public Sub Dispose() Implements IDisposable.Dispose
+        Dispose(True)
+    End Sub
+#End Region
 
 End Class
