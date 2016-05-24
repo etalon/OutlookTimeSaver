@@ -88,8 +88,6 @@ Public Class ThisAddIn
             Select Case True
                 Case TypeOf p_Inspector.CurrentItem Is Outlook.MailItem
 
-                    ' TODO: Wie können wir feststellen ob die Mail aus dem Drafts-Ordner geöffnet wurde???
-
                     Dim openedFromDrafts As Boolean = m_Explorer.CurrentFolder.EntryID = Application.Session.GetDefaultFolder(Outlook.OlDefaultFolders.olFolderDrafts).EntryID
                     MailItemHandlerList.Add(TryCast(p_Inspector.CurrentItem, Outlook.MailItem), False, openedFromDrafts)
 

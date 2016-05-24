@@ -7,39 +7,32 @@ Imports System.Runtime.InteropServices
 Public Class MailItemHandler
     Implements IDisposable
 
-    Private WithEvents m_MailItem As Outlook.MailItem
     Private Shared m_OutlookApplication As Outlook.Application
+    Private Shared m_MailItemSaveSyncLock As New Object
 
     Private m_Inspector As Outlook.Inspector
 
-    Private m_MailToLine As String = ""
-    Private m_Recipients As New List(Of MailRecipient)
+    Private WithEvents m_MailItem As Outlook.MailItem
+    Private WithEvents m_AfterResponseMailOpenTimer As Windows.Forms.Timer
+    Private WithEvents m_MailItemSaveTimer As New Windows.Forms.Timer
 
+    Private m_Recipients As New List(Of MailRecipient)
     Private m_WordEditor As Word.Document
 
-    Private WithEvents m_AfterResponseMailOpenTimer As Windows.Forms.Timer
     Private m_IsNewMail As Boolean
-    Private m_LastSalutationWritten As String
-    Private m_BodyFormat As Outlook.OlBodyFormat
     Private m_IsInlineRespone As Boolean
-    Private m_OpenedFromDrafts As Boolean
+    Private m_IsOpenedFromDrafts As Boolean
+    Private m_IsItemSent As Boolean
 
+    Private m_LastSalutationWritten As String
     Private m_KnownPropertyChanges As New HashSet(Of String)
-
     Private m_SalutationFromDatabase As String = ""
-
-    Private WithEvents m_SaveTimer As New Windows.Forms.Timer
-    Private Shared m_SavingSyncLock As New Object
-
     Private m_ReceivedTime As Date
 
+
+#Region "Properties"
+
     Public Property EntryId As String
-
-    Public Shared Sub PassOutlookApplication(p_OutlookApplication As Outlook.Application)
-        m_OutlookApplication = p_OutlookApplication
-    End Sub
-
-    Private m_ItemSent As Boolean
 
     Private ReadOnly Property isSalutationWritten As Boolean
         Get
@@ -69,20 +62,25 @@ Public Class MailItemHandler
         End Get
     End Property
 
-    Public Sub New(p_MailItem As Outlook.MailItem, p_IsInlineResponse As Boolean, p_OpenedFromDrafts As Boolean)
+#End Region
 
-        Log.Debug(String.Format("New MailItem (IsInlineRespone = {0}, OpenedFromDrafts = {1}", p_IsInlineResponse, p_OpenedFromDrafts))
+#Region "Constructor"
+
+    Public Sub New(p_MailItem As Outlook.MailItem, p_IsInlineResponse As Boolean, p_IsOpenedFromDrafts As Boolean)
+
+        Log.Debug(String.Format("New MailItem (IsInlineRespone = {0}, OpenedFromDrafts = {1}", p_IsInlineResponse, p_IsOpenedFromDrafts))
 
         m_MailItem = p_MailItem
-        m_BodyFormat = m_MailItem.BodyFormat
         m_IsInlineRespone = p_IsInlineResponse
-        m_OpenedFromDrafts = p_OpenedFromDrafts
+        m_IsOpenedFromDrafts = p_IsOpenedFromDrafts
 
         If m_IsInlineRespone Then
             m_MailItem_Open()
         End If
 
     End Sub
+
+#End Region
 
 #Region "Events"
 
@@ -107,7 +105,7 @@ Public Class MailItemHandler
 
         Log.Debug("MailItem_Close")
 
-        If m_ItemSent Or m_OpenedFromDrafts Then
+        If m_IsItemSent Or m_IsOpenedFromDrafts Then
             ' Die Mail nur aus der Liste entfernen, aber nicht löschen. Entwurf wird also beibehalten
             Me.Dispose()
         Else
@@ -126,7 +124,7 @@ Public Class MailItemHandler
     Private Sub m_MailItem_Send() Handles m_MailItem.Send
 
         Log.Debug("Nachricht wird gesendet...")
-        m_ItemSent = True
+        m_IsItemSent = True
 
         SaveSalutationToReceipients()
         MailItemHandlerList.Remove(Me)
@@ -139,7 +137,7 @@ Public Class MailItemHandler
     ''' <param name="Name"></param>
     Private Sub m_MailItem_PropertyChange(Name As String) Handles m_MailItem.PropertyChange
 
-        SyncLock m_SavingSyncLock
+        SyncLock m_MailItemSaveSyncLock
 
             Try
 
@@ -164,8 +162,8 @@ Public Class MailItemHandler
                             Return
                         End If
 
-                        m_SaveTimer.Interval = 1
-                        m_SaveTimer.Enabled = True
+                        m_MailItemSaveTimer.Interval = 1
+                        m_MailItemSaveTimer.Enabled = True
 
                     Case "subject"
 
@@ -182,8 +180,8 @@ Public Class MailItemHandler
                             Return
                         End If
 
-                        m_SaveTimer.Interval = 1
-                        m_SaveTimer.Enabled = True
+                        m_MailItemSaveTimer.Interval = 1
+                        m_MailItemSaveTimer.Enabled = True
 
 
                 End Select
@@ -196,10 +194,10 @@ Public Class MailItemHandler
 
     End Sub
 
-    Private Sub SaveTimerTicke() Handles m_SaveTimer.Tick
+    Private Sub SaveTimerTicke() Handles m_MailItemSaveTimer.Tick
 
-        SyncLock m_SavingSyncLock
-            m_SaveTimer.Enabled = False
+        SyncLock m_MailItemSaveSyncLock
+            m_MailItemSaveTimer.Enabled = False
             m_MailItem.Save()
             m_ReceivedTime = m_MailItem.ReceivedTime
             EntryId = m_MailItem.EntryID
@@ -242,6 +240,12 @@ Public Class MailItemHandler
     End Sub
 
 #End Region
+
+#Region "Methods"
+
+    Public Shared Sub PassOutlookApplication(p_OutlookApplication As Outlook.Application)
+        m_OutlookApplication = p_OutlookApplication
+    End Sub
 
     Public Sub SaveSalutationToReceipients()
 
@@ -314,7 +318,7 @@ Public Class MailItemHandler
 
         Dim haveRecipientsChanged As Boolean
 
-        If m_OpenedFromDrafts Then
+        If m_IsOpenedFromDrafts Then
             Log.Debug("Anrede nicht setzen...")
             Return
         End If
@@ -425,7 +429,7 @@ Public Class MailItemHandler
                 Log.Debug("Letzte Anrede aus Datenbank: " & salutation)
 
                 If Not String.IsNullOrEmpty(salutation) Then
-                    m_salutationFromDatabase = salutation
+                    m_SalutationFromDatabase = salutation
                 Else
                     salutation = Join(m_Recipients.Select(Function(x) x.DefaultSalutation).ToArray, ", ")
                     salutation &= ", "
@@ -458,6 +462,8 @@ Public Class MailItemHandler
 
     End Function
 
+#End Region
+
 #Region "IDisposable Support"
     Private disposedValue As Boolean ' To detect redundant calls
 
@@ -467,7 +473,7 @@ Public Class MailItemHandler
             If disposing Then
 
                 If m_AfterResponseMailOpenTimer IsNot Nothing Then m_AfterResponseMailOpenTimer.Dispose()
-                If m_SaveTimer IsNot Nothing Then m_SaveTimer.Dispose()
+                If m_MailItemSaveTimer IsNot Nothing Then m_MailItemSaveTimer.Dispose()
                 MailItemHandlerList.Remove(Me)
 
             End If
