@@ -36,7 +36,9 @@ Public Class DeletedItemsHandler
                     Return
                 End If
 
-                .UnRead = False
+                If Config.My.UnReadDeletedItems Then
+                    .UnRead = False
+                End If
 
             End With
 

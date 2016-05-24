@@ -32,6 +32,7 @@ Public Class Config
 
         Public DebugViewMode As Boolean = True
         Public LoggingEnabled As Boolean = True
+        Public UnReadDeletedItems As Boolean = True
         Public NoSalutationAtTopicStartsWith As New List(Of String)
 
     End Class
