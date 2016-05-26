@@ -36,7 +36,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 Why open source?
 ---------------------
 In the beginning with my idea I had the thought of making money with this outlook addin.
-I saw that there are several companies selling similar tools (not always based on outlook).
+I saw that there are several companies selling similar tools (not always based on outlook) and that this
+could be possible. After a period of time my mind changed and I became skeptic if this would be rentable.
+On the other hand I want that others can use my software.
+
+I came to the following conclusion:
+
 In our times the most valuable thing is time. So I want to make a present for those who need 
 time and for those who want to optimise themselve. Hopefully you will succeed.
 
@@ -75,9 +80,9 @@ Developement
 ---------------------
 OutlookTimeSaver is an addin for Microsoft Outlook.
 This addin is developed with Visual Studio 2015 Community Edition.
-All you have to do is clone the repository to you computer and 
+All you have to do is clone the repository to your computer and 
 open it with Visual Studio 2015. After this you will have to download
-the nuget packages.
+the nuget packages and start developing.
 
 Planned Features
 ---------------------
