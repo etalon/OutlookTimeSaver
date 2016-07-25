@@ -278,7 +278,13 @@ Public Class MailRecipient
 
     Private Function resolveByDisplayName(p_OutlookRecipient As Outlook.Recipient, ByRef p_FirstName As String, ByRef p_LastName As String) As Boolean
 
-        Dim user() As String = p_OutlookRecipient.Name.Split(" "c)
+        Dim user() As String
+
+        If p_OutlookRecipient.Name.Contains(",") Then
+            user = p_OutlookRecipient.Name.Split(" "c)
+        Else
+            user = p_OutlookRecipient.Name.Split(","c)
+        End If
 
         m_DisplayName = p_OutlookRecipient.Name
 
@@ -288,8 +294,14 @@ Public Class MailRecipient
             Return False
         End If
 
-        p_FirstName = GetUppercasedName(user(0))
-        p_LastName = GetUppercasedName(user(1))
+        If p_OutlookRecipient.Name.Contains(",") Then
+            p_FirstName = GetUppercasedName(user(1).Trim)
+            p_LastName = GetUppercasedName(user(0).Trim)
+        Else
+            p_FirstName = GetUppercasedName(user(0))
+            p_LastName = GetUppercasedName(user(1))
+        End If
+
         Return True
 
     End Function

@@ -37,7 +37,7 @@
     <PublishUrl>..\..\Setup\</PublishUrl>
     <InstallUrl />
     <TargetCulture>en</TargetCulture>
-    <ApplicationVersion>1.0.2.4</ApplicationVersion>
+    <ApplicationVersion>1.0.2.5</ApplicationVersion>
     <AutoIncrementApplicationRevision>true</AutoIncrementApplicationRevision>
     <UpdateEnabled>true</UpdateEnabled>
     <UpdateInterval>7</UpdateInterval>
@@ -290,6 +290,8 @@
       <SubType>Code</SubType>
     </Compile>
     <None Include="App.config" />
+    <None Include="OutlookTimeSaver_1_TemporaryKey.pfx" />
+    <None Include="OutlookTimeSaver_2_TemporaryKey.pfx" />
     <None Include="OutlookTimeSaver_TemporaryKey.pfx" />
     <None Include="packages.config" />
     <None Include="ThisAddIn.Designer.xml">
@@ -351,10 +353,10 @@
     <SignManifests>true</SignManifests>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestKeyFile>OutlookTimeSaver_TemporaryKey.pfx</ManifestKeyFile>
+    <ManifestKeyFile>OutlookTimeSaver_2_TemporaryKey.pfx</ManifestKeyFile>
   </PropertyGroup>
   <PropertyGroup>
-    <ManifestCertificateThumbprint>341F5D07A9061BCC45843CDB8623F5E982829BAB</ManifestCertificateThumbprint>
+    <ManifestCertificateThumbprint>EEC8C4C73D7FB266536A94781928D3FDD0B3A100</ManifestCertificateThumbprint>
   </PropertyGroup>
   <!-- Include the build rules for a Visual Basic project. -->
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
