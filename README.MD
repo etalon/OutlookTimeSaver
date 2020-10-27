@@ -93,3 +93,11 @@ Planned Features
 * Recognize email formats from previous contacts of same company
 ** eg. emails with no dot and one letter for firstname --> hmustermann@company.de (Mustermann will be the lastname)
 * Statistics how much typing and time is saved
+
+Knowledge
+---------------------
+* Installation Path
+** C:\Users\myUser\AppData\Local\Apps\
+* Zertifikat
+** Unter den Projekteinstellungen kann ein Testzertifikat erstellt werden. Dies ist zunächst ausreichend
+

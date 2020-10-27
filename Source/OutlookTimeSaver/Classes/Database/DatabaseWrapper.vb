@@ -252,12 +252,6 @@ Public MustInherit Class DatabaseWrapper
         End If
 
         Select Case p_OverloadedConnectionType
-            Case eDbType.MSSQL
-                myObject = New DatabaseMSSQL
-                myObject.m_DbType = eDbType.MSSQL
-            Case eDbType.MySql
-                myObject = New DatabaseMySql
-                myObject.m_DbType = eDbType.MySql
             Case eDbType.Sqlite
                 myObject = New DatabaseSqlite()
                 myObject.m_DbType = eDbType.Sqlite
